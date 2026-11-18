@@ -48,6 +48,8 @@ on localhost and active on GitHub Pages.
 | `vendor/fonts/` | Noto Sans subset (Latin + Cyrillic, OFL) for PDFs |
 | `vendor/fonts/web/` | Golos Text + Unbounded, Latin + Cyrillic subsets (OFL) for the UI |
 | `js/ribbon.js` | The day ribbon (24-hour strip with entries as blocks) |
+| `dither/` | Source of the dithered sky: a React island on the [dithercn](https://dithercn.dev) engine |
+| `vendor/dither/` | Built island (`<sky-dither>` custom element), loaded by `js/ribbon.js` on first use |
 | `vendor/temporal-polyfill.js` | Temporal polyfill, loaded only where `Temporal` is missing (Safari) |
 | `sw.js` | Offline cache |
 
@@ -88,3 +90,18 @@ Track is a Harvest-style day timesheet: week strip with daily totals, one row pe
 task + description with h:mm and a play/stop button, the running row highlighted. Everything else is quiet ink on paper. Type: Golos Text for the interface,
 Unbounded for the clock and big numbers. Light and dark palettes are paired with
 `light-dark()` tokens in `css/app.css`.
+
+## Dithered sky (dithercn)
+
+The ribbon's sky is drawn by [dithercn](https://dithercn.dev) (`dither/src/components/sky-ribbon.tsx`):
+a `DitherShader` whose `field` sets dot density from how bright the sky is at each hour
+(dense night in light mode, dense day in dark mode, slow drifting clouds, a gentle pulse at
+"now") and whose `colorField` walks the app's own sky colours. It is a React island, so the
+rest of the app stays plain JS:
+
+```sh
+cd dither && npm ci && npm run build   # writes vendor/dither/dither.js + dither.css
+```
+
+Commit the rebuilt files and bump `VERSION` in `sw.js`. Without WebGL, or before the island
+loads, the ribbon shows its CSS gradient.

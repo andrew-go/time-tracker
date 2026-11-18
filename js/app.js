@@ -193,7 +193,7 @@ function renderTrack(params) {
         h('span', { 'aria-hidden': 'true' }, '›')),
     ),
 
-    dayRibbon(day, entriesOnDay(day, all), { size: 'small' }),
+    dayRibbon(day, entriesOnDay(day, all), { size: 'small', cell: 3 }),
 
     groups.length
       ? h('section', { 'aria-labelledby': 'ts-list-title' },
@@ -339,7 +339,7 @@ function daySection(day, dayEntries, now) {
         ? h('span', { class: 'day-total', 'data-clock': 'total', 'data-start': running.start, 'data-base': doneMs })
         : h('span', { class: 'day-total' }, formatHM(doneMs)),
     ),
-    dayRibbon(day, dayEntries, { size: 'small' }),
+    dayRibbon(day, dayEntries, { size: 'small', cell: 2 }),
     h('ul', { class: 'list' },
       dayEntries.map((e) => h('li', { class: 'row entry' },
         h('span', { class: 'entry-time' }, `${timeOf(e.start)}–${e.end ? timeOf(e.end) : 'now'}`),
@@ -349,7 +349,7 @@ function daySection(day, dayEntries, now) {
         ),
         e.end
           ? h('span', { class: 'entry-dur' }, formatHM(e.end - e.start))
-          : clock(e.start, 0, 'entry-dur clock'),
+          : h('span', { class: 'entry-dur', 'data-clock': 'hm', 'data-start': e.start, 'data-base': 0 }, formatHM(Date.now() - e.start)),
         h('div', { class: 'row-actions' },
           h('button', { type: 'button', class: 'small', id: `edit-${e.id}`, onclick: () => openEntryDialog(e),
             'aria-label': `Edit ${store.labelsOf(e).task} at ${timeOf(e.start)}` }, 'Edit'),

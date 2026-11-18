@@ -11,12 +11,31 @@ import { h } from './ui.js';
 
 const pct = (x) => `${(Math.min(1, Math.max(0, x)) * 100).toFixed(3)}%`;
 
+// The sky itself is drawn by the dither island (React + dithercn), loaded on
+// first use. Until it draws, or if it can't load, the CSS gradient shows.
+let ditherLoad;
+function loadDither() {
+  ditherLoad ??= (async () => {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = new URL('../vendor/dither/dither.css', import.meta.url).href;
+    document.head.append(css);
+    await import('../vendor/dither/dither.js');
+  })().catch((err) => {
+    console.warn('Dithered sky unavailable, using the gradient.', err);
+  });
+  return ditherLoad;
+}
+
+const nowAttr = (fraction) => (fraction >= 0 && fraction <= 1 ? fraction.toFixed(4) : '-1');
+
 /**
  * @param day      Temporal.PlainDate
  * @param entries  entries overlapping that day
- * @param size     'large' (Track) or 'small' (Entries)
+ * @param size     'large' or 'small'
+ * @param cell     dither cell size in CSS px
  */
-export function dayRibbon(day, entries, { size = 'large' } = {}) {
+export function dayRibbon(day, entries, { size = 'large', cell = 3 } = {}) {
   const start = startOfDay(day);
   const span = startOfDay(day.add({ days: 1 })) - start;
   const now = Date.now();
@@ -44,8 +63,10 @@ export function dayRibbon(day, entries, { size = 'large' } = {}) {
     ? `${isToday ? 'Today' : 'Day'}: ${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}, ${formatTotal(tracked)} tracked, from ${timeOf(first)}`
     : `${isToday ? 'Today' : 'Day'}: nothing tracked yet`;
 
+  loadDither();
   return h('div', { class: `ribbon ${size}`, 'data-start': start, 'data-span': span },
     h('div', { class: 'sky', role: 'img', 'aria-label': summary },
+      h('sky-dither', { now: isToday ? nowAttr((now - start) / span) : '-1', cell }),
       blocks,
       isToday ? h('span', { class: 'now', style: { '--l': pct((now - start) / span) } }) : null,
     ),
@@ -64,6 +85,11 @@ export function updateRibbons(now = Date.now()) {
       b.style.setProperty('--w', pct((Math.min(now, start + span) - Number(b.dataset.from)) / span));
     }
     r.querySelector('.now')?.style.setProperty('--l', pct((now - start) / span));
+    const sky = r.querySelector('sky-dither');
+    if (sky && sky.getAttribute('now') !== '-1') {
+      const value = nowAttr((now - start) / span);
+      if (sky.getAttribute('now') !== value) sky.setAttribute('now', value);
+    }
   }
 }
 

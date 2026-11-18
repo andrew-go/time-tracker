@@ -57,7 +57,8 @@
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 
-@layer reset, tokens, base, components, views, utilities;
+/* `theme` first: the dither island's Tailwind theme variables must never override ours. */
+@layer theme, reset, tokens, base, components, views, utilities;
 
 /* ---- Reset (element-scoped, no global *) ---------------------------- */
 @layer reset {
@@ -376,6 +377,17 @@
     }
     &.small .sky { block-size: 1.25rem; border-radius: 0.375rem; }
 
+    /* The dithered sky (vendor/dither): fills the strip under the entry blocks.
+       Once it has drawn a frame, the CSS gradient steps aside. */
+    & sky-dither {
+      position: absolute;
+      inset: 0;
+      display: block;
+      border-radius: inherit;
+      overflow: hidden;
+    }
+    & .sky:has(> sky-dither > [data-state]:not([data-state="fallback"])) { background: none; }
+
     & .blk {
       position: absolute;
       inset-block: 22%;
@@ -621,6 +633,7 @@
 
   /* Track: day timesheet */
   .timesheet { gap: var(--space-4); }
+  .timesheet .ribbon .sky { block-size: 2.25rem; border-radius: var(--radius-sm); }
 
   .ts-head {
     display: flex;

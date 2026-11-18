@@ -1,6 +1,11 @@
 # Project rules
 
 - Vanilla HTML/CSS/JS ES modules, no build step, no framework. Hosted on GitHub Pages.
+  **One exception: `dither/`**, a small React 19 + Tailwind v4 + shadcn island for the dithered
+  day ribbon (the dithercn engine needs React). It builds to `vendor/dither/` with
+  `cd dither && npm ci && npm run build`; the built files are committed, so Pages needs no build.
+  The app uses it only through the `<sky-dither>` custom element (see `js/ribbon.js`).
+  For dither work, follow `.claude/skills/dithercn/SKILL.md`.
 - **Use Google Chrome's Modern Web Guidance** (https://developer.chrome.com/docs/modern-web-guidance)
   for all HTML/CSS/client-side JS work. Before implementing a UI pattern or web API, search and
   retrieve the relevant guide:
