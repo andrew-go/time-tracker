@@ -93,6 +93,10 @@
     --danger: light-dark(#B42318, #FF8A7A);
     --focus: light-dark(#1F5FD6, #8AB4FF);
     --block-outline: light-dark(rgb(255 255 255 / 0.9), rgb(16 21 31 / 0.85));
+    /* Topographic background lines. Kept faint: muted text crossing a line
+       still has ≥4.5:1 contrast (light 4.57, dark 5.04). */
+    --topo-line: light-dark(#E0E9F1, #202B3C);
+    --topo-index: light-dark(#D9E4EE, #273550);
 
     /* Aliases used by components */
     --bg: var(--paper);
@@ -496,6 +500,15 @@
 
 /* ---- App shell and views ------------------------------------------- */
 @layer views {
+  /* Dithered topographic map behind the whole app (vendor/dither). */
+  topo-background {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    display: block;
+    pointer-events: none;
+  }
+
   .app-header {
     display: flex;
     align-items: center;
@@ -593,7 +606,9 @@
   @keyframes pulse { 50% { opacity: 0.35; } }
 
   .app-nav {
-    background: var(--bg);
+    /* Not fully opaque on purpose: a solid sticky bar over the fixed background
+       canvas made Chrome repaint its background as a stray band lower down. */
+    background: color-mix(in oklab, var(--bg) 94%, transparent);
     border-block-end: 1px solid var(--border);
     position: sticky;
     inset-block-start: 0;
@@ -695,8 +710,6 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     overflow: hidden;
-
-    &.quiet { background: transparent; }
   }
 
   .ts-row {

@@ -1,14 +1,16 @@
 /*
- * The dither island: a custom element, <sky-dither>, that the plain-JS app
- * drops into a day ribbon. React and the dithercn engine live only in here.
+ * The dither island. React and the dithercn engine live only in here; the
+ * plain-JS app uses two custom elements:
  *
- *   <sky-dither now="0.44" cell="3"></sky-dither>
+ *   <sky-dither now="0.44" cell="3"></sky-dither>   the day ribbon's sky
+ *   <topo-background></topo-background>             the app's background map
  *
- * The element mounts a React root when it's attached and unmounts it when it's
+ * Each element mounts a React root when it's attached and unmounts it when it's
  * removed, so re-rendered views never leak WebGL contexts.
  */
 import { createRoot, type Root } from "react-dom/client";
 
+import { Contours } from "@/components/dithercn/contours";
 import { SkyRibbon } from "@/components/sky-ribbon";
 import "./index.css";
 
@@ -59,3 +61,36 @@ class SkyDither extends HTMLElement {
 }
 
 if (!customElements.get("sky-dither")) customElements.define("sky-dither", SkyDither);
+
+/*
+ * The app's background: dithercn's Contours example, tuned to sit quietly
+ * behind everything. Plain contour lines with every fifth drawn heavier, no
+ * hillshade, slow drift, in the app's --topo-* colours (light-dark pairs,
+ * faint enough that muted text over a line keeps 4.5:1).
+ */
+class TopoBackground extends HTMLElement {
+  #root: Root | null = null;
+
+  connectedCallback() {
+    this.#root ??= createRoot(this);
+    this.#root.render(
+      <Contours
+        className="absolute inset-0"
+        lines={12}
+        scale={0.9}
+        index={5}
+        relief={0}
+        speed={0.4}
+        palette={["transparent", "--topo-line", "--topo-index"]}
+      />,
+    );
+  }
+
+  disconnectedCallback() {
+    const root = this.#root;
+    this.#root = null;
+    queueMicrotask(() => root?.unmount());
+  }
+}
+
+if (!customElements.get("topo-background")) customElements.define("topo-background", TopoBackground);

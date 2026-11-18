@@ -8,6 +8,7 @@ import { renderReports } from './reports.js';
 import { dayRibbon, entriesOnDay, updateRibbons } from './ribbon.js';
 import { formatSyncedAt, renderSettings } from './settings.js';
 import * as sync from './sync.js';
+import { loadDither } from './dither.js';
 import { announce, confirmDialog, h, nameDialog, polyfillClosedBy } from './ui.js';
 
 const view = document.getElementById('view');
@@ -496,6 +497,7 @@ async function main() {
 
   await sync.initSync();
   render();
+  loadDither(); // background map + sky; the app works without them
   addEventListener('hashchange', render);
   sync.events.addEventListener('change', () => {
     renderSyncButton();

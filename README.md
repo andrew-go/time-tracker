@@ -103,5 +103,11 @@ rest of the app stays plain JS:
 cd dither && npm ci && npm run build   # writes vendor/dither/dither.js + dither.css
 ```
 
+The app's background is dithercn's **Contours** example (`dither/src/components/dithercn/contours.tsx`,
+installed with `npx shadcn@latest add https://dithercn.dev/r/contours.json`), mounted as
+`<topo-background>` behind everything: plain contour lines with every fifth heavier, no hillshade,
+slow drift, in the `--topo-line` / `--topo-index` colours. Those are kept faint so muted text that
+crosses a line still has at least 4.5:1 contrast.
+
 Commit the rebuilt files and bump `VERSION` in `sw.js`. Without WebGL, or before the island
 loads, the ribbon shows its CSS gradient.

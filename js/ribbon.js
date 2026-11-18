@@ -8,25 +8,12 @@
 import * as store from './store.js';
 import { formatTotal, startOfDay, timeOf, today } from './time.js';
 import { h } from './ui.js';
+import { loadDither } from './dither.js';
 
 const pct = (x) => `${(Math.min(1, Math.max(0, x)) * 100).toFixed(3)}%`;
 
-// The sky itself is drawn by the dither island (React + dithercn), loaded on
-// first use. Until it draws, or if it can't load, the CSS gradient shows.
-let ditherLoad;
-function loadDither() {
-  ditherLoad ??= (async () => {
-    const css = document.createElement('link');
-    css.rel = 'stylesheet';
-    css.href = new URL('../vendor/dither/dither.css', import.meta.url).href;
-    document.head.append(css);
-    await import('../vendor/dither/dither.js');
-  })().catch((err) => {
-    console.warn('Dithered sky unavailable, using the gradient.', err);
-  });
-  return ditherLoad;
-}
-
+// The sky itself is drawn by the dither island (<sky-dither>), loaded on first
+// use. Until it draws, or if it can't load, the CSS gradient shows.
 const nowAttr = (fraction) => (fraction >= 0 && fraction <= 1 ? fraction.toFixed(4) : '-1');
 
 /**
