@@ -157,3 +157,87 @@ export function saveEntry({ id, taskId, description = '', start, end }) {
 }
 
 export const removeEntry = (id) => save('entries', { ...entry(id), deleted: true });
+
+// ---- Snapshots, merge (sync and backup) ----------------------------------
+
+export const SNAPSHOT_FORMAT = 'time-tracker';
+
+/** Everything, including tombstones, as one JSON-serializable object. */
+export function snapshot() {
+  return {
+    format: SNAPSHOT_FORMAT,
+    version: 1,
+    exportedAt: Date.now(),
+    ...Object.fromEntries(db.STORES.map((name) => [name, [...state[name].values()]])),
+  };
+}
+
+const isRecord = (r) => r && typeof r.id === 'string' && Number.isFinite(r.updatedAt);
+const VALID = {
+  projects: (r) => isRecord(r) && typeof r.name === 'string',
+  tasks: (r) => isRecord(r) && typeof r.name === 'string' && typeof r.projectId === 'string',
+  entries: (r) => isRecord(r) && typeof r.taskId === 'string' && Number.isFinite(r.start) && (r.end == null || Number.isFinite(r.end)),
+};
+
+/** Last write wins; ties broken deterministically so every device picks the same record. */
+const wins = (a, b) =>
+  a.updatedAt > b.updatedAt || (a.updatedAt === b.updatedAt && JSON.stringify(a) > JSON.stringify(b));
+
+export function isSnapshot(data) {
+  return data?.format === SNAPSHOT_FORMAT && db.STORES.every((name) => Array.isArray(data[name]));
+}
+
+/**
+ * Merge another snapshot (from Drive or a backup file) into local data,
+ * record by record. Incoming records are stored as-is (their updatedAt is kept).
+ * Returns how many local records changed and whether the other side is missing
+ * anything we have (so it needs an upload).
+ */
+export async function mergeSnapshot(other) {
+  if (!isSnapshot(other)) throw new Error('This isn’t a Time Tracker data file.');
+  let localChanged = 0;
+  let otherBehind = false;
+
+  for (const name of db.STORES) {
+    const theirs = new Map(other[name].filter(VALID[name]).map((r) => [r.id, r]));
+    const incoming = [];
+    for (const r of theirs.values()) {
+      const mine = state[name].get(r.id);
+      if (!mine || wins(r, mine)) incoming.push(r);
+      else if (wins(mine, r)) otherBehind = true;
+    }
+    for (const id of state[name].keys()) if (!theirs.has(id)) otherBehind = true;
+    if (incoming.length) {
+      await db.putMany(name, incoming);
+      for (const r of incoming) state[name].set(r.id, r);
+      localChanged += incoming.length;
+    }
+  }
+
+  // Timers started on two devices: keep the newest running, stop the others when it started.
+  const runningNow = live(state.entries).filter((e) => e.end == null).toSorted((a, b) => b.start - a.start);
+  for (const old of runningNow.slice(1)) {
+    const fixed = { ...old, end: Math.max(old.start, runningNow[0].start), updatedAt: Date.now() };
+    state.entries.set(fixed.id, fixed);
+    await db.put('entries', fixed);
+    localChanged += 1;
+    otherBehind = true;
+  }
+
+  if (localChanged) {
+    channel?.postMessage('merge');
+    events.dispatchEvent(new Event('change'));
+  }
+  return { localChanged, otherBehind };
+}
+
+/** Has anything changed locally since `since` (epoch ms)? */
+export function changedSince(since) {
+  return db.STORES.some((name) => [...state[name].values()].some((r) => r.updatedAt > since));
+}
+
+export const counts = () => ({
+  projects: live(state.projects).length,
+  tasks: live(state.tasks).length,
+  entries: live(state.entries).length,
+});

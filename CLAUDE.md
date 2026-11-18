@@ -12,6 +12,8 @@
 - **Browser support:** Baseline Widely available features are used freely. For anything newer, follow
   the guide's fallback (e.g. Temporal polyfill loaded only when missing, `closedby` light-dismiss fallback).
   Vendor fallbacks locally in `vendor/` so the app keeps working offline; never load from a CDN.
+  The one exception is Google's sign-in library (`accounts.google.com/gsi/client`), which must be
+  loaded from Google; it's loaded only when sync is connected.
 - Never put user data into `innerHTML`; build DOM with `h()` from `js/ui.js`.
 - Dates/times: use Temporal (`js/time.js`), not `Date` arithmetic. Store instants as epoch ms.
 - All data mutations go through `js/store.js` so `updatedAt` / tombstones stay consistent for sync.

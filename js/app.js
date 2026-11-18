@@ -5,13 +5,15 @@ import {
 } from './time.js';
 import { openEntryDialog } from './entry-dialog.js';
 import { renderReports } from './reports.js';
+import { formatSyncedAt, renderSettings } from './settings.js';
+import * as sync from './sync.js';
 import { announce, confirmDialog, fillDatalist, h, nameDialog, polyfillClosedBy } from './ui.js';
 
 const view = document.getElementById('view');
 
 // ---- Routing -------------------------------------------------------------
 
-const routes = { track: renderTrack, entries: renderEntries, projects: renderProjects, reports: renderReports };
+const routes = { track: renderTrack, entries: renderEntries, projects: renderProjects, reports: renderReports, settings: renderSettings };
 
 function parseHash() {
   const [path = '', query = ''] = location.hash.replace(/^#\/?/, '').split('?');
@@ -21,7 +23,7 @@ function parseHash() {
 let lastRoute;
 function render() {
   const route = parseHash();
-  for (const a of document.querySelectorAll('.app-nav a')) {
+  for (const a of document.querySelectorAll('a[data-route]')) {
     if (a.dataset.route === route.name) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   }
@@ -34,6 +36,7 @@ function render() {
   }
   lastRoute = route.name;
   renderHeaderTimer();
+  renderSyncButton();
   tick();
 }
 
@@ -85,6 +88,31 @@ function renderHeaderTimer() {
       h('span', { class: 'header-task' }, store.labelsOf(r).task),
     );
   }
+}
+
+function renderSyncButton() {
+  const btn = document.getElementById('sync-btn');
+  const s = sync.state();
+  btn.hidden = s.status === 'off';
+  if (btn.hidden) return;
+  const dot = s.unsynced && s.status !== 'syncing' ? h('span', { class: 'dot', 'aria-hidden': 'true' }) : null;
+  const label = {
+    syncing: 'Syncing…',
+    idle: s.unsynced ? 'Sync' : 'Synced',
+    'needs-auth': 'Sync',
+    error: 'Sync failed',
+  }[s.status];
+  const detail = s.status === 'error'
+    ? ` with Google Drive: ${s.error}. Press to retry.`
+    : ` with Google Drive. Last synced ${formatSyncedAt(s.lastSyncAt)}${s.unsynced ? '. Changes waiting.' : '.'}`;
+  btn.disabled = s.status === 'syncing';
+  btn.dataset.status = s.status;
+  btn.replaceChildren(
+    h('span', { class: 'sync-icon', 'aria-hidden': 'true' }, s.status === 'error' ? '⚠' : s.status === 'idle' && !s.unsynced ? '✓' : '⟳'),
+    h('span', { class: 'sync-label' }, label),
+    h('span', { class: 'visually-hidden' }, detail),
+    ...(dot ? [dot] : []),
+  );
 }
 
 async function deleteEntry(e) {
@@ -426,8 +454,14 @@ async function main() {
   polyfillClosedBy();
   navigator.storage?.persist?.(); // ask the browser not to evict our data
 
+  await sync.initSync();
   render();
   addEventListener('hashchange', render);
+  sync.events.addEventListener('change', () => {
+    renderSyncButton();
+    if (parseHash().name === 'settings') refresh();
+  });
+  document.getElementById('sync-btn').addEventListener('click', () => sync.syncNow({ interactive: true }));
   store.events.addEventListener('change', refresh);
   setInterval(tick, 1000);
   // A new day can start while the app is open in the background.
