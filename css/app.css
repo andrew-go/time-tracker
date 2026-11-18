@@ -392,22 +392,28 @@
     }
     & .sky:has(> sky-dither > [data-state]:not([data-state="fallback"])) { background: none; }
 
+    /* Entry blocks: a patch that clears the sky, a thin edge in the project
+       colour, and the colour itself on ::before. The dither island masks
+       ::before into dots; until it loads the block is solid. */
+    --blk-cell: 2px;
     & .blk {
       position: absolute;
       inset-block: 22%;
       inset-inline-start: var(--l);
       inline-size: max(var(--w), 3px);
       border-radius: 0.3125rem;
-      background: var(--c);
-      box-shadow: 0 0 0 1.5px var(--block-outline);
+      background: var(--surface);
+      box-shadow: inset 0 0 0 1px var(--c), 0 0 0 1.5px var(--block-outline);
       forced-color-adjust: none;
     }
-    &.small .blk { inset-block: 20%; border-radius: 2px; box-shadow: 0 0 0 1px var(--block-outline); }
-
-    & .blk.run {
-      background: repeating-linear-gradient(135deg,
-        var(--c) 0 6px, color-mix(in oklab, var(--c), white 28%) 6px 12px);
+    & .blk::before {
+      content: "";
+      position: absolute;
+      inset: 1px;
+      border-radius: inherit;
+      background: var(--c);
     }
+    &.small .blk { inset-block: 20%; border-radius: 2px; box-shadow: inset 0 0 0 1px var(--c), 0 0 0 1px var(--block-outline); }
 
     & .now {
       position: absolute;
@@ -439,7 +445,7 @@
 
   @media (forced-colors: active) {
     .ribbon .sky { border: 1px solid CanvasText; }
-    .ribbon .blk { background: Highlight; outline: 1px solid CanvasText; }
+    .ribbon .blk, .ribbon .blk::before { background: Highlight; outline: 1px solid CanvasText; }
     .ribbon .now { background: CanvasText; }
   }
 
@@ -648,6 +654,7 @@
 
   /* Track: day timesheet */
   .timesheet { gap: var(--space-4); }
+  .timesheet .ribbon { --blk-cell: 3px; }
   .timesheet .ribbon .sky { block-size: 2.25rem; border-radius: var(--radius-sm); }
 
   .ts-head {

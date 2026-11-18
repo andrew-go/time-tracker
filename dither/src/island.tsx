@@ -12,6 +12,7 @@ import { createRoot, type Root } from "react-dom/client";
 
 import { Contours } from "@/components/dithercn/contours";
 import { SkyRibbon } from "@/components/sky-ribbon";
+import { ditherMaskStyle, fillStyle } from "@/lib/dither";
 import "./index.css";
 
 // dithercn's tokens switch on a `.dark` class; this app follows the system
@@ -94,3 +95,37 @@ class TopoBackground extends HTMLElement {
 }
 
 if (!customElements.get("topo-background")) customElements.define("topo-background", TopoBackground);
+
+
+/*
+ * Dithered entry blocks on the ribbon. Static CSS masks from the engine
+ * (no WebGL), injected once; until then, and in forced-colours mode, the
+ * blocks stay solid. The plain-JS side draws each block's ::before in its
+ * project colour; these rules only add the mask.
+ *   finished entries: an even dither, 12 of every 16 cells
+ *   the running entry: densest at the "now" edge, thinning back to its start
+ */
+const cssText = (style: Record<string, unknown>) =>
+  Object.entries(style)
+    .filter(([key]) => !key.startsWith("Webkit") || key === "WebkitMaskImage" || key.startsWith("WebkitMask"))
+    .map(([key, value]) => `${key.replace(/^Webkit/, "-webkit-").replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}: ${String(value)};`)
+    .join(" ");
+
+const cell = "var(--blk-cell)";
+const done = ditherMaskStyle(0.75, { cell });
+// Only the mask properties: the block's colour comes from the app's CSS.
+const { backgroundColor: _unused, ...running } = fillStyle("gradient", {
+  edge: "right",
+  from: 1,
+  to: 0.3125,
+  length: 10,
+  cell,
+}) as Record<string, unknown>;
+
+const fills = document.createElement("style");
+fills.id = "dither-fills";
+fills.textContent = `@media not (forced-colors: active) {
+  .ribbon .blk::before { ${cssText(done as Record<string, unknown>)} }
+  .ribbon .blk.run::before { ${cssText(running)} }
+}`;
+document.head.append(fills);
