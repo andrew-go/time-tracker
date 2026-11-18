@@ -2,8 +2,9 @@
 
 /* ---- Reset (element-scoped, no global *) ---------------------------- */
 @layer reset {
-  html { box-sizing: border-box; -webkit-text-size-adjust: 100%; }
-  :where(*, *::before, *::after) { box-sizing: inherit; }
+  html { -webkit-text-size-adjust: 100%; }
+  /* Elements that combine a set size with padding/borders */
+  :where(input, select, textarea, button, .button, dialog, .card, .day) { box-sizing: border-box; }
   body, h1, h2, h3, p, ul, figure { margin: 0; }
   ul.list { padding: 0; list-style: none; }
   :where(button, input, select, textarea) { font: inherit; font-size: max(1rem, 1em); color: inherit; }
