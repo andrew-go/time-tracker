@@ -4,13 +4,14 @@ import {
   startOfDay, timeOf, today, weekStart,
 } from './time.js';
 import { openEntryDialog } from './entry-dialog.js';
+import { renderReports } from './reports.js';
 import { announce, confirmDialog, fillDatalist, h, nameDialog, polyfillClosedBy } from './ui.js';
 
 const view = document.getElementById('view');
 
 // ---- Routing -------------------------------------------------------------
 
-const routes = { track: renderTrack, entries: renderEntries, projects: renderProjects };
+const routes = { track: renderTrack, entries: renderEntries, projects: renderProjects, reports: renderReports };
 
 function parseHash() {
   const [path = '', query = ''] = location.hash.replace(/^#\/?/, '').split('?');
@@ -26,7 +27,11 @@ function render() {
   }
   view.replaceChildren(routes[route.name](route.params));
   // Move focus into the new view only on navigation, not on data refreshes.
-  if (lastRoute !== undefined && lastRoute !== route.name) view.focus();
+  if (lastRoute !== undefined && lastRoute !== route.name) {
+    // Start the new view at the top (focus alone would scroll its heading under the sticky nav).
+    scrollTo({ top: 0 });
+    view.focus({ preventScroll: true });
+  }
   lastRoute = route.name;
   renderHeaderTimer();
   tick();

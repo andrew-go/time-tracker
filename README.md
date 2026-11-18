@@ -2,8 +2,7 @@
 
 A simple personal time tracker that runs as an installable web app (PWA).
 Projects → tasks → time entries with descriptions. Data lives on the device
-(IndexedDB) and works offline. Google Drive sync and monthly PDF reports are
-coming in the next steps.
+(IndexedDB) and works offline. Monthly reports export to PDF and CSV. Google Drive sync is coming next.
 
 ## Run locally
 
@@ -37,7 +36,11 @@ When you add or rename files, update the `SHELL` list and bump `VERSION` in `sw.
 | `js/db.js` | IndexedDB wrapper |
 | `js/time.js` | Temporal-based date/duration helpers |
 | `js/entry-dialog.js` | Add / edit time entry dialog |
+| `js/reports.js` | Reports view and report data (month/range, project filter) |
+| `js/export.js` | PDF (jsPDF + autotable) and CSV export, loaded on demand |
 | `js/ui.js` | DOM helpers, confirm/name dialogs |
+| `vendor/pdf.js` | jsPDF + jspdf-autotable bundle (MIT) |
+| `vendor/fonts/` | Noto Sans subset (Latin + Cyrillic, OFL) for PDFs |
 | `vendor/temporal-polyfill.js` | Temporal polyfill, loaded only where `Temporal` is missing (Safari) |
 | `sw.js` | Offline cache |
 
@@ -53,6 +56,6 @@ merged record-by-record during sync.
 ## Roadmap
 
 1. ✅ Data layer, Track, Entries, Projects, offline PWA shell
-2. Monthly reports + PDF / CSV export
+2. ✅ Monthly reports + PDF / CSV export
 3. Google Drive sync (`appDataFolder`) + JSON backup/restore
 4. Install/offline polish, deploy

@@ -17,6 +17,16 @@ export function fillDatalist(list, names) {
   list.replaceChildren(...names.map((value) => h('option', { value })));
 }
 
+/** Save a generated file via a temporary download link. */
+export function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = h('a', { href: url, download: filename, hidden: true });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 /** Show a short message in the polite live region. */
 let statusTimer;
 export function announce(message) {

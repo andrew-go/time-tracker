@@ -1,6 +1,6 @@
 // Offline support: serve the app shell from cache, refresh it in the background
 // (stale-while-revalidate). Bump VERSION when files are added or removed.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE = `time-tracker-${VERSION}`;
 const SHELL = [
   './',
@@ -13,6 +13,11 @@ const SHELL = [
   'js/time.js',
   'js/ui.js',
   'js/entry-dialog.js',
+  'js/reports.js',
+  'js/export.js',
+  'vendor/pdf.js',
+  'vendor/fonts/NotoSans-Regular.ttf',
+  'vendor/fonts/NotoSans-Bold.ttf',
   'vendor/temporal-polyfill.js',
   'icons/icon.svg',
   'icons/icon-192.png',

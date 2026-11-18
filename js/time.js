@@ -54,8 +54,27 @@ export function formatTotal(ms) {
   return d.sign === 0 ? '0m' : totalFormat.format(d);
 }
 
+const hmFormat = new Intl.DurationFormat(LOCALE, { style: 'digital', hoursDisplay: 'always', secondsDisplay: 'auto' });
+const decimalFormat = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false });
+
+/** Report hours as "h:mm", e.g. "7:05", "123:45". */
+export const formatHM = (ms) => hmFormat.format(duration(ms, 'minute'));
+
+/** Decimal hours with a dot, e.g. "7.08" (for invoices / spreadsheets). */
+export const formatDecimal = (ms) => decimalFormat.format(ms / 3_600_000);
+
 export const formatDay = (date) =>
   date.toLocaleString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' });
+
+export const formatDate = (date) =>
+  date.toLocaleString(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
+
+export const formatMonth = (ym) =>
+  ym.toPlainDate({ day: 1 }).toLocaleString(LOCALE, { month: 'long', year: 'numeric' });
+
+/** True when [from, to] is exactly one calendar month. */
+export const isWholeMonth = (from, to) =>
+  from.day === 1 && to.equals(from.with({ day: from.daysInMonth }));
 
 export function formatRange(from, to) {
   const sameYear = from.year === to.year;

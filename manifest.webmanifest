@@ -16,6 +16,7 @@
   ],
   "shortcuts": [
     { "name": "Entries", "url": "./#/entries" },
-    { "name": "Projects", "url": "./#/projects" }
+    { "name": "Projects", "url": "./#/projects" },
+    { "name": "Reports", "url": "./#/reports" }
   ]
 }
