@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#16181d" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="Simple personal time tracker: projects, tasks, monthly reports.">
+  <title>Time Tracker</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="app-header">
+    <p class="brand"><a href="#/track">Time Tracker</a></p>
+    <a id="header-timer" class="header-timer" href="#/track" hidden></a>
+  </header>
+
+  <nav class="app-nav" aria-label="Main">
+    <ul>
+      <li><a href="#/track" data-route="track">Track</a></li>
+      <li><a href="#/entries" data-route="entries">Entries</a></li>
+      <li><a href="#/projects" data-route="projects">Projects</a></li>
+    </ul>
+  </nav>
+
+  <main id="view" tabindex="-1">
+    <p class="loading">Loading…</p>
+  </main>
+
+  <p id="status" class="status" role="status"></p>
+
+  <!-- Shared suggestion list: every project name, for "pick or type new" inputs -->
+  <datalist id="dl-projects"></datalist>
+
+  <!-- Add / edit a time entry. Esc closes; no click-outside so typed changes aren't lost by accident. -->
+  <dialog id="entry-dialog" aria-labelledby="entry-dialog-title">
+    <form method="dialog" id="entry-form">
+      <h2 id="entry-dialog-title">Edit entry</h2>
+      <div class="field">
+        <label for="ef-project">Project <span class="req" aria-hidden="true">*</span></label>
+        <input id="ef-project" name="project" list="dl-projects" required autocomplete="off" enterkeyhint="next">
+      </div>
+      <div class="field">
+        <label for="ef-task">Task <span class="req" aria-hidden="true">*</span></label>
+        <input id="ef-task" name="task" list="dl-entry-tasks" required autocomplete="off" enterkeyhint="next">
+        <datalist id="dl-entry-tasks"></datalist>
+      </div>
+      <div class="field">
+        <label for="ef-description">Description</label>
+        <input id="ef-description" name="description" autocomplete="off">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="ef-date">Date <span class="req" aria-hidden="true">*</span></label>
+          <input id="ef-date" name="date" type="date" required>
+        </div>
+        <div class="field">
+          <label for="ef-start">Start <span class="req" aria-hidden="true">*</span></label>
+          <input id="ef-start" name="start" type="time" required>
+        </div>
+        <div class="field">
+          <label for="ef-end">End <span class="req" aria-hidden="true">*</span></label>
+          <input id="ef-end" name="end" type="time" required aria-describedby="ef-hint">
+        </div>
+      </div>
+      <p id="ef-hint" class="hint"></p>
+      <div class="actions">
+        <button value="cancel" formnovalidate>Cancel</button>
+        <button value="save" class="primary">Save entry</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Create / rename a project or task -->
+  <dialog id="name-dialog" aria-labelledby="name-dialog-title">
+    <form method="dialog" id="name-form">
+      <h2 id="name-dialog-title">Rename</h2>
+      <div class="field">
+        <label for="nf-name">Name <span class="req" aria-hidden="true">*</span></label>
+        <input id="nf-name" name="name" required autocomplete="off" maxlength="120">
+      </div>
+      <div class="field" id="nf-color-field">
+        <label for="nf-color">Color</label>
+        <input id="nf-color" name="color" type="color">
+      </div>
+      <div class="actions">
+        <button value="cancel" formnovalidate>Cancel</button>
+        <button value="save" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Destructive confirmation: safe action gets focus -->
+  <dialog id="confirm-dialog" closedby="any" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+    <form method="dialog">
+      <h2 id="confirm-title">Are you sure?</h2>
+      <p id="confirm-message"></p>
+      <div class="actions">
+        <button value="cancel" autofocus>Cancel</button>
+        <button value="ok" class="danger" id="confirm-ok">Delete</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
