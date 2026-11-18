@@ -23,7 +23,7 @@ on localhost and active on GitHub Pages.
 3. The app will be at `https://<user>.github.io/time-tracker/`.
 4. In Chrome or Edge, use the install icon in the address bar to install it as an app.
 
-When you add or rename files, update the `SHELL` list and bump `VERSION` in `sw.js`.
+**On every deploy that changes app files, bump `VERSION` in `sw.js`** (and keep its `SHELL` list in sync). Open copies of the app then reload into the new version automatically.
 
 ## Structure
 

@@ -15,3 +15,4 @@
 - Never put user data into `innerHTML`; build DOM with `h()` from `js/ui.js`.
 - Dates/times: use Temporal (`js/time.js`), not `Date` arithmetic. Store instants as epoch ms.
 - All data mutations go through `js/store.js` so `updatedAt` / tombstones stay consistent for sync.
+- Every deploy that changes app files must bump `VERSION` in `sw.js`, or installed copies keep serving the old cached version.

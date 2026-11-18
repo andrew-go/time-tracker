@@ -1,6 +1,14 @@
-// Offline support: serve the app shell from cache, refresh it in the background
-// (stale-while-revalidate). Bump VERSION when files are added or removed.
-const VERSION = 'v2';
+// Offline support.
+//
+// Each VERSION precaches a complete, consistent copy of the app and serves it
+// cache-first, so the app opens instantly and works offline. Deploying a new
+// version changes this file, the browser installs the new worker in the
+// background, and the page reloads itself once the new worker takes over
+// (see `watchForUpdates` in js/app.js).
+//
+// Bump VERSION on every deploy that changes app files, and keep SHELL in sync
+// with the files the app loads.
+const VERSION = 'v3';
 const CACHE = `time-tracker-${VERSION}`;
 const SHELL = [
   './',
@@ -15,22 +23,29 @@ const SHELL = [
   'js/entry-dialog.js',
   'js/reports.js',
   'js/export.js',
+  'vendor/temporal-polyfill.js',
   'vendor/pdf.js',
   'vendor/fonts/NotoSans-Regular.ttf',
   'vendor/fonts/NotoSans-Bold.ttf',
-  'vendor/temporal-polyfill.js',
   'icons/icon.svg',
   'icons/icon-192.png',
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches.open(CACHE)
+      // cache: 'reload' bypasses the HTTP cache so we never precache a stale file.
+      .then((cache) => cache.addAll(SHELL.map((url) => new Request(url, { cache: 'reload' }))))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('time-tracker-') && k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(
+        keys.filter((k) => k.startsWith('time-tracker-') && k !== CACHE).map((k) => caches.delete(k)),
+      ))
       .then(() => self.clients.claim()),
   );
 });
@@ -39,20 +54,12 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET' || new URL(request.url).origin !== location.origin) return;
 
-  event.respondWith(
-    caches.open(CACHE).then(async (cache) => {
-      const cached = await cache.match(request, { ignoreSearch: true });
-      const network = fetch(request)
-        .then((res) => {
-          if (res.ok) cache.put(request, res.clone());
-          return res;
-        })
-        .catch(() => cached);
-      if (cached) {
-        event.waitUntil(network);
-        return cached;
-      }
-      return network;
-    }),
-  );
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    // App navigations (any hash route) get the cached shell.
+    const cached = request.mode === 'navigate'
+      ? await cache.match('./')
+      : await cache.match(request, { ignoreSearch: true });
+    return cached ?? fetch(request);
+  })());
 });

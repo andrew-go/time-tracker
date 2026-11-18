@@ -435,7 +435,32 @@ async function main() {
 
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('sw.js');
+    watchForUpdates();
   }
+}
+
+/**
+ * When a newly deployed version takes over, reload so the page runs the new code.
+ * Skipped on the very first install, and postponed while a dialog is open so
+ * nothing being typed is lost. All data is already saved in IndexedDB.
+ */
+function watchForUpdates() {
+  if (!navigator.serviceWorker.controller) return; // first visit: nothing old to replace
+  let reloading = false;
+  const reloadWhenIdle = () => {
+    if (reloading) return;
+    if (document.querySelector('dialog[open]')) {
+      document.addEventListener('close', reloadWhenIdle, { capture: true, once: true });
+      return;
+    }
+    reloading = true;
+    location.reload();
+  };
+  navigator.serviceWorker.addEventListener('controllerchange', reloadWhenIdle);
+  // Check for a new version when the app comes back to the foreground.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) navigator.serviceWorker.getRegistration().then((r) => r?.update());
+  });
 }
 
 main().catch((err) => {
