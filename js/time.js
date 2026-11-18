@@ -66,6 +66,9 @@ export const formatDecimal = (ms) => decimalFormat.format(ms / 3_600_000);
 export const formatDay = (date) =>
   date.toLocaleString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' });
 
+/** "18 Nov" */
+export const formatShort = (date) => date.toLocaleString(LOCALE, { day: 'numeric', month: 'short' });
+
 export const formatDate = (date) =>
   date.toLocaleString(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 

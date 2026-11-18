@@ -83,7 +83,8 @@ merged record-by-record during sync.
 ## Design: "Daylight"
 
 The day is the organizing idea. A 24-hour ribbon shaded night → dawn → day → dusk shows
-entries as blocks in their project color (large on Track, a thin strip on each day in
-Entries). Everything else is quiet ink on paper. Type: Golos Text for the interface,
+entries as blocks in their project color (a thin strip on each day in Track and Entries).
+Track is a Harvest-style day timesheet: week strip with daily totals, one row per
+task + description with h:mm and a play/stop button, the running row highlighted. Everything else is quiet ink on paper. Type: Golos Text for the interface,
 Unbounded for the clock and big numbers. Light and dark palettes are paired with
 `light-dark()` tokens in `css/app.css`.

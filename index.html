@@ -86,6 +86,34 @@
     </form>
   </dialog>
 
+  <!-- Start a timer -->
+  <dialog id="start-dialog" aria-labelledby="start-dialog-title">
+    <form method="dialog" id="start-form">
+      <h2 id="start-dialog-title">Start a timer</h2>
+      <div class="field">
+        <label for="sd-project">Project <span class="req" aria-hidden="true">*</span></label>
+        <input id="sd-project" name="project" list="dl-projects" required autocomplete="off" enterkeyhint="next" aria-describedby="sd-help">
+      </div>
+      <div class="field">
+        <label for="sd-task">Task <span class="req" aria-hidden="true">*</span></label>
+        <input id="sd-task" name="task" list="dl-start-tasks" required autocomplete="off" enterkeyhint="next">
+        <datalist id="dl-start-tasks"></datalist>
+      </div>
+      <div class="field">
+        <label for="sd-description">Description</label>
+        <input id="sd-description" name="description" autocomplete="off" enterkeyhint="go">
+      </div>
+      <p id="sd-help" class="hint">Pick an existing project and task, or type a new name to create it.</p>
+      <div class="actions split">
+        <button value="manual" formnovalidate class="text-btn">Add past time instead</button>
+        <span class="actions">
+          <button value="cancel" formnovalidate>Cancel</button>
+          <button value="start" class="primary">Start timer</button>
+        </span>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Create / rename a project or task -->
   <dialog id="name-dialog" aria-labelledby="name-dialog-title">
     <form method="dialog" id="name-form">

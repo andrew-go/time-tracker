@@ -48,8 +48,11 @@ function validate(isRunning) {
     : error || (nextDay ? 'Ends the next day.' : '');
 }
 
-/** Open the add/edit dialog. Resolves true when something was saved. */
-export async function openEntryDialog(existing = null) {
+/**
+ * Open the add/edit dialog. Resolves true when something was saved.
+ * For a new entry, `preset` can fill { date (PlainDate), project, task, description }.
+ */
+export async function openEntryDialog(existing = null, preset = {}) {
   const isRunning = existing != null && existing.end == null;
   const form = $('#entry-form');
   form.reset();
@@ -65,9 +68,13 @@ export async function openEntryDialog(existing = null) {
     $('#ef-end').value = isRunning ? '' : timeOf(existing.end);
   } else {
     const end = roundTo5(Date.now());
-    $('#ef-date').value = today().toString();
-    $('#ef-start').value = timeOf(end - 3_600_000);
-    $('#ef-end').value = timeOf(end);
+    const date = preset.date ?? today();
+    $('#ef-date').value = date.toString();
+    $('#ef-start').value = date.equals(today()) ? timeOf(end - 3_600_000) : '09:00';
+    $('#ef-end').value = date.equals(today()) ? timeOf(end) : '10:00';
+    $('#ef-project').value = preset.project ?? '';
+    $('#ef-task').value = preset.task ?? '';
+    $('#ef-description').value = preset.description ?? '';
   }
   $('#ef-end').disabled = isRunning;
   $('#ef-end').required = !isRunning;
@@ -96,5 +103,40 @@ export async function openEntryDialog(existing = null) {
     end: isRunning ? null : end,
   });
   announce(existing ? 'Entry updated' : 'Entry added');
+  return true;
+}
+
+// ---- Start timer dialog ----------------------------------------------------
+
+const startDialog = () => document.getElementById('start-dialog');
+
+/** Ask for project/task/description and start a timer. Resolves true if started. */
+export async function openStartDialog() {
+  const d = startDialog();
+  const form = d.querySelector('#start-form');
+  form.reset();
+  fillDatalist(document.getElementById('dl-projects'), store.projects().map((p) => p.name));
+  const taskList = d.querySelector('#dl-start-tasks');
+  const refresh = () => {
+    const p = projectByName(d.querySelector('#sd-project').value);
+    fillDatalist(taskList, p ? store.tasks(p.id).map((t) => t.name) : []);
+  };
+  refresh();
+  d.querySelector('#sd-project').addEventListener('input', refresh);
+  const pending = runDialog(d);
+  d.querySelector('#sd-project').focus();
+  const result = await pending;
+  d.querySelector('#sd-project').removeEventListener('input', refresh);
+
+  const values = {
+    project: d.querySelector('#sd-project').value,
+    task: d.querySelector('#sd-task').value,
+    description: d.querySelector('#sd-description').value,
+  };
+  if (result === 'manual') return openEntryDialog(null, values);
+  if (result !== 'start') return false;
+  const t = await store.resolveTask(values.project, values.task);
+  await store.startTimer({ taskId: t.id, description: values.description });
+  announce('Timer started');
   return true;
 }

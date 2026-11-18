@@ -1,14 +1,14 @@
 import * as store from './store.js';
 import {
-  dayOf, ensureTemporal, formatClock, formatDay, formatRange, formatTotal,
+  dayOf, ensureTemporal, formatClock, formatDay, formatHM, formatRange, formatShort,
   startOfDay, timeOf, today, weekStart,
 } from './time.js';
-import { openEntryDialog } from './entry-dialog.js';
+import { openEntryDialog, openStartDialog } from './entry-dialog.js';
 import { renderReports } from './reports.js';
 import { dayRibbon, entriesOnDay, updateRibbons } from './ribbon.js';
 import { formatSyncedAt, renderSettings } from './settings.js';
 import * as sync from './sync.js';
-import { announce, confirmDialog, fillDatalist, h, nameDialog, polyfillClosedBy } from './ui.js';
+import { announce, confirmDialog, h, nameDialog, polyfillClosedBy } from './ui.js';
 
 const view = document.getElementById('view');
 
@@ -70,7 +70,7 @@ function tick() {
   const now = Date.now();
   for (const el of document.querySelectorAll('[data-clock]')) {
     const ms = Number(el.dataset.base) + (now - Number(el.dataset.start));
-    el.textContent = el.classList.contains('clock') ? formatClock(ms) : formatTotal(ms);
+    el.textContent = el.classList.contains('clock') ? formatClock(ms) : formatHM(ms);
   }
   updateRibbons(now);
   const r = store.running();
@@ -128,132 +128,163 @@ async function deleteEntry(e) {
   }
 }
 
-// ---- Track view ----------------------------------------------------------
+// ---- Track view (day timesheet) ------------------------------------------
 
-function renderTrack() {
-  const running = store.running();
-  const now = Date.now();
-  const day = today();
-  const todayStart = startOfDay(day);
-  const weekStartMs = startOfDay(weekStart(day));
-  const clipFrom = (from) => (e) => ({ ...e, start: Math.max(e.start, from) });
+const dayLink = (d) => (d.equals(today()) ? '#/track' : `#/track?day=${d}`);
+const weekdayLetter = (d) => d.toLocaleString('en-GB', { weekday: 'narrow' });
+const weekdayLong = (d) => d.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+
+/** Entries that started on a calendar day (same rule as Entries and Reports). */
+function startedOn(day, list) {
+  const from = startOfDay(day);
+  const to = startOfDay(day.add({ days: 1 }));
+  return list.filter((e) => e.start >= from && e.start < to);
+}
+
+/** Total for a list; a running entry makes it a live element. */
+function liveTotal(list, attrs = {}) {
+  const run = list.find((e) => e.end == null);
+  const done = store.totalMs(list.filter((e) => e.end != null));
+  return run
+    ? h('span', { ...attrs, 'data-clock': 'hm', 'data-start': run.start, 'data-base': done }, formatHM(done + Date.now() - run.start))
+    : h('span', attrs, formatHM(done));
+}
+
+function renderTrack(params) {
+  let day;
+  try { day = Temporal.PlainDate.from(params.get('day') ?? ''); } catch { day = today(); }
+  const isToday = day.equals(today());
   const all = store.entries();
-  const todays = entriesOnDay(day, all);
-  const todayMs = store.totalMs(todays.map(clipFrom(todayStart)), now);
-  const weekMs = store.totalMs(all.filter((e) => (e.end ?? now) > weekStartMs).map(clipFrom(weekStartMs)), now);
-  const total = (ms) => running
-    ? h('strong', { 'data-clock': 'total', 'data-start': now, 'data-base': ms }, formatTotal(ms))
-    : h('strong', null, formatTotal(ms));
+  const running = store.running();
+  const dayEntries = startedOn(day, all);
+  const ws = weekStart(day);
+  const week = Array.from({ length: 7 }, (_, i) => ws.add({ days: i }));
 
-  return h('div', { class: 'stack track' },
-    h('h1', { class: 'visually-hidden' }, 'Track'),
-    dayRibbon(day, todays),
-    running ? runningHero(running) : startForm(),
-    h('dl', { class: 'totals' },
-      h('div', null, h('dt', null, 'Today'), h('dd', null, total(todayMs))),
-      h('div', null, h('dt', null, 'This week'), h('dd', null, total(weekMs))),
+  // One row per task + description, in the order they were first worked on.
+  const groups = [...Map.groupBy(dayEntries.toSorted((a, b) => a.start - b.start),
+    (e) => `${e.taskId}\u0000${e.description ?? ''}`).values()];
+
+  const trackTime = () => (isToday ? openStartDialog() : openEntryDialog(null, { date: day }));
+
+  return h('div', { class: 'stack timesheet' },
+    h('div', { class: 'ts-head' },
+      h('h1', null, isToday ? `Today, ${formatShort(day)}` : `${day.toLocaleString('en-GB', { weekday: 'long' })}, ${formatShort(day)}`),
+      h('button', { type: 'button', class: 'primary', id: 'track-time-btn', onclick: trackTime },
+        h('span', { 'aria-hidden': 'true' }, '+'), ' Track time'),
     ),
-    recentList(running),
+
+    h('nav', { class: 'week-strip', 'aria-label': 'Days of the week' },
+      h('a', { class: 'button icon-btn ghost', href: dayLink(day.subtract({ weeks: 1 })), 'aria-label': 'Previous week' },
+        h('span', { 'aria-hidden': 'true' }, '‹')),
+      h('ol', null, week.map((d) => {
+        const list = startedOn(d, all);
+        return h('li', null,
+          h('a', {
+            href: dayLink(d),
+            class: d.equals(today()) ? 'is-today' : null,
+            'aria-current': d.equals(day) ? 'date' : null,
+          },
+            h('span', { class: 'ws-letter', 'aria-hidden': 'true' }, weekdayLetter(d)),
+            h('span', { class: 'visually-hidden' }, `${weekdayLong(d)}${d.equals(today()) ? ' (today)' : ''}: `),
+            liveTotal(list, { class: 'ws-total' }),
+          ));
+      })),
+      h('a', { class: 'button icon-btn ghost', href: dayLink(day.add({ weeks: 1 })), 'aria-label': 'Next week' },
+        h('span', { 'aria-hidden': 'true' }, '›')),
+    ),
+
+    dayRibbon(day, entriesOnDay(day, all), { size: 'small' }),
+
+    groups.length
+      ? h('section', { 'aria-labelledby': 'ts-list-title' },
+          h('h2', { id: 'ts-list-title', class: 'visually-hidden' }, 'Time entries'),
+          h('ul', { class: 'ts-list' }, groups.map((g) => timesheetRow(g, day, isToday))),
+          h('p', { class: 'ts-total' }, h('span', null, 'Total'), liveTotal(dayEntries, { class: 'ts-total-value' })),
+        )
+      : h('div', { class: 'ts-empty' },
+          h('p', null, isToday ? 'Nothing tracked yet today.' : 'Nothing tracked on this day.'),
+          h('button', { type: 'button', onclick: trackTime }, isToday ? 'Start a timer' : 'Add time'),
+        ),
+
+    !isToday ? h('p', null, h('a', { href: '#/track' }, 'Back to today')) : null,
+    isToday ? startAgain(groups, running) : null,
   );
 }
 
-function runningHero(r) {
-  const l = store.labelsOf(r);
-  return h('section', { class: 'hero', 'aria-labelledby': 'running-title' },
-    h('h2', { id: 'running-title', class: 'visually-hidden' }, 'Running timer'),
-    h('p', { class: 'hero-clock' }, clock(r.start, 0, 'clock')),
-    h('p', { class: 'hero-task' }, entryLabel(r)),
-    h('p', { class: 'hero-desc' }, r.description ? `${r.description} · since ${timeOf(r.start)}` : `Since ${timeOf(r.start)}`),
-    h('div', { class: 'hero-actions' },
-      h('button', { type: 'button', class: 'primary stop', id: 'stop-btn', onclick: async () => {
+function timesheetRow(group, day, isToday) {
+  const first = group[0];
+  const l = store.labelsOf(first);
+  const desc = first.description ?? '';
+  const run = group.find((e) => e.end == null);
+  const name = `${l.task}${desc ? `, ${desc}` : ''}`;
+
+  const toggle = run
+    ? h('button', { type: 'button', class: 'ts-toggle stop', 'aria-label': `Stop ${name}`, onclick: async () => {
         await store.stopTimer();
         announce('Timer stopped');
-      } }, 'Stop'),
-      h('button', { type: 'button', id: 'edit-running-btn', onclick: () => openEntryDialog(r) }, 'Edit'),
-      h('button', { type: 'button', class: 'danger-text', onclick: async () => {
-        const ok = await confirmDialog({
-          title: 'Discard this timer?',
-          message: 'The running entry will be deleted without saving.',
-          confirmLabel: 'Discard',
-        });
-        if (ok) { await store.removeEntry(r.id); announce('Timer discarded'); }
-      } }, 'Discard'),
+      } }, h('span', { class: 'stop-icon', 'aria-hidden': 'true' }))
+    : h('button', { type: 'button', class: 'ts-toggle', 'aria-label': `Start ${name}${isToday ? '' : ' today'}`, onclick: async () => {
+        await store.startTimer({ taskId: first.taskId, description: desc });
+        announce(`Started ${l.task}`);
+        if (!isToday) location.hash = '#/track';
+      } }, h('span', { class: 'play-icon', 'aria-hidden': 'true' }));
+
+  const open = () => (group.length === 1 ? openEntryDialog(first) : openIntervals(group, name));
+
+  return h('li', { class: run ? 'ts-row running' : 'ts-row', style: { '--c': l.color } },
+    h('button', { type: 'button', class: 'ts-open', onclick: open,
+      'aria-label': `Edit ${name}${group.length > 1 ? ` (${group.length} time ranges)` : ''}` },
+      h('span', { class: 'ts-project' }, h('span', { class: 'swatch', style: { '--swatch': l.color }, 'aria-hidden': 'true' }), l.project),
+      h('span', { class: 'ts-task' }, l.task),
+      desc ? h('span', { class: 'ts-desc' }, desc) : null,
     ),
+    liveTotal(group, { class: 'ts-dur' }),
+    toggle,
   );
 }
 
-function startForm() {
-  fillDatalist(document.getElementById('dl-projects'), store.projects().map((p) => p.name));
-  const taskList = h('datalist', { id: 'dl-start-tasks' });
-
-  const updateTasks = (e) => {
-    const n = e.target.value.trim().toLocaleLowerCase();
-    const p = store.projects().find((x) => x.name.toLocaleLowerCase() === n);
-    fillDatalist(taskList, p ? store.tasks(p.id).map((t) => t.name) : []);
-  };
-
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    const data = new FormData(e.target);
-    e.submitter.disabled = true;
-    const t = await store.resolveTask(data.get('project'), data.get('task'));
-    await store.startTimer({ taskId: t.id, description: data.get('description') });
-    announce('Timer started');
-    document.getElementById('stop-btn')?.focus();
-  };
-
-  return h('form', { class: 'card start-form', 'aria-labelledby': 'start-title', onsubmit: onSubmit },
-    h('h2', { id: 'start-title' }, 'Start a timer'),
-    h('div', { class: 'field' },
-      h('label', { for: 'sf-project' }, 'Project ', h('span', { class: 'req', 'aria-hidden': 'true' }, '*')),
-      h('input', { id: 'sf-project', name: 'project', list: 'dl-projects', required: true, autocomplete: 'off',
-        enterkeyhint: 'next', 'aria-describedby': 'sf-help', oninput: updateTasks }),
-    ),
-    h('div', { class: 'field' },
-      h('label', { for: 'sf-task' }, 'Task ', h('span', { class: 'req', 'aria-hidden': 'true' }, '*')),
-      h('input', { id: 'sf-task', name: 'task', list: 'dl-start-tasks', required: true, autocomplete: 'off', enterkeyhint: 'next' }),
-      taskList,
-    ),
-    h('div', { class: 'field' },
-      h('label', { for: 'sf-description' }, 'Description'),
-      h('input', { id: 'sf-description', name: 'description', autocomplete: 'off', enterkeyhint: 'go' }),
-    ),
-    h('p', { id: 'sf-help', class: 'hint' }, 'Pick an existing project and task, or type a new name to create it.'),
-    h('div', { class: 'actions' },
-      h('button', { class: 'primary', type: 'submit' }, 'Start'),
-      h('button', { type: 'button', onclick: () => openEntryDialog() }, 'Add time manually'),
-    ),
+/** A row that combines several time ranges: list them for editing. */
+function openIntervals(group, name) {
+  const dialog = h('dialog', { class: 'intervals', 'aria-labelledby': 'iv-title', closedby: 'any' },
+    h('h2', { id: 'iv-title' }, name),
+    h('ul', { class: 'list' }, group.map((e) => h('li', { class: 'row' },
+      h('span', { class: 'row-main entry-time' }, `${timeOf(e.start)}–${e.end ? timeOf(e.end) : 'now'}`),
+      h('span', { class: 'entry-dur' }, e.end ? formatHM(e.end - e.start) : 'running'),
+      h('div', { class: 'row-actions' },
+        h('button', { type: 'button', class: 'small', onclick: () => { dialog.close(); openEntryDialog(e); },
+          'aria-label': `Edit ${timeOf(e.start)}` }, 'Edit'),
+        h('button', { type: 'button', class: 'small danger-text', onclick: () => { dialog.close(); deleteEntry(e); },
+          'aria-label': `Delete ${timeOf(e.start)}` }, 'Delete'),
+      ),
+    ))),
+    h('form', { method: 'dialog', class: 'actions' }, h('button', { autofocus: true }, 'Close')),
   );
+  dialog.addEventListener('close', () => dialog.remove());
+  document.body.append(dialog);
+  dialog.showModal();
 }
 
-function recentList(running) {
-  const combos = store.recentCombos();
-  if (!combos.length) {
-    return h('p', { class: 'empty' }, 'Your recent tasks will appear here for one-click restart.');
-  }
+/** Recent task + description pairs not already on today's sheet. */
+function startAgain(groups, running) {
+  const onSheet = new Set(groups.map((g) => `${g[0].taskId}\u0000${g[0].description ?? ''}`));
+  const combos = store.recentCombos(12).filter((c) => !onSheet.has(`${c.taskId}\u0000${c.description}`)).slice(0, 5);
+  if (!combos.length) return null;
   return h('section', { class: 'recent', 'aria-labelledby': 'recent-title' },
-    h('h2', { id: 'recent-title' }, 'Recent'),
-    h('ul', { class: 'list' },
-      combos.map((c, i) => {
-        const isCurrent = running && running.taskId === c.taskId && (running.description ?? '') === c.description;
-        const name = store.task(c.taskId).name;
-        return h('li', { class: 'row' },
-          h('div', { class: 'row-main' },
-            entryLabel({ taskId: c.taskId }),
-            c.description ? h('span', { class: 'row-desc' }, c.description) : null,
-          ),
-          h('button', {
-            type: 'button', class: 'icon-btn play', id: `recent-${i}`, disabled: isCurrent,
-            'aria-label': `Start ${name}${c.description ? `: ${c.description}` : ''}`,
-            onclick: async () => {
-              await store.startTimer(c);
-              announce(`Started ${name}`);
-              document.getElementById('stop-btn')?.focus();
-            },
-          }, h('span', { 'aria-hidden': 'true' }, '▶')),
-        );
-      }),
-    ),
+    h('h2', { id: 'recent-title' }, 'Start again'),
+    h('ul', { class: 'ts-list quiet' }, combos.map((c) => {
+      const l = store.labelsOf({ taskId: c.taskId });
+      const name = `${l.task}${c.description ? `, ${c.description}` : ''}`;
+      return h('li', { class: 'ts-row', style: { '--c': l.color } },
+        h('div', { class: 'ts-open static' },
+          h('span', { class: 'ts-project' }, h('span', { class: 'swatch', style: { '--swatch': l.color }, 'aria-hidden': 'true' }), l.project),
+          h('span', { class: 'ts-task' }, l.task),
+          c.description ? h('span', { class: 'ts-desc' }, c.description) : null,
+        ),
+        h('button', { type: 'button', class: 'ts-toggle', 'aria-label': `Start ${name}`, disabled: running?.taskId === c.taskId && (running.description ?? '') === c.description,
+          onclick: async () => { await store.startTimer(c); announce(`Started ${l.task}`); } },
+          h('span', { class: 'play-icon', 'aria-hidden': 'true' })),
+      );
+    })),
   );
 }
 
@@ -285,7 +316,7 @@ function renderEntries(params) {
       h('p', { class: 'week-label' },
         h('strong', null, formatRange(from, to)),
         h('span', { class: 'week-total' }, ' · ',
-          running ? h('span', { 'data-clock': 'total', 'data-start': running.start, 'data-base': finishedMs }) : formatTotal(finishedMs)),
+          running ? h('span', { 'data-clock': 'total', 'data-start': running.start, 'data-base': finishedMs }) : formatHM(finishedMs)),
       ),
       h('a', { class: 'button icon-btn', href: weekLink(from.add({ weeks: 1 })), 'aria-label': 'Next week' },
         h('span', { 'aria-hidden': 'true' }, '›')),
@@ -306,7 +337,7 @@ function daySection(day, dayEntries, now) {
       h('span', null, formatDay(day)),
       running
         ? h('span', { class: 'day-total', 'data-clock': 'total', 'data-start': running.start, 'data-base': doneMs })
-        : h('span', { class: 'day-total' }, formatTotal(doneMs)),
+        : h('span', { class: 'day-total' }, formatHM(doneMs)),
     ),
     dayRibbon(day, dayEntries, { size: 'small' }),
     h('ul', { class: 'list' },
@@ -317,7 +348,7 @@ function daySection(day, dayEntries, now) {
           e.description ? h('span', { class: 'row-desc' }, e.description) : null,
         ),
         e.end
-          ? h('span', { class: 'entry-dur' }, formatTotal(e.end - e.start))
+          ? h('span', { class: 'entry-dur' }, formatHM(e.end - e.start))
           : clock(e.start, 0, 'entry-dur clock'),
         h('div', { class: 'row-actions' },
           h('button', { type: 'button', class: 'small', id: `edit-${e.id}`, onclick: () => openEntryDialog(e),
@@ -407,7 +438,7 @@ function projectCard(p, msByTask) {
   return h('section', { class: `card project${p.archived ? ' archived' : ''}`, 'aria-labelledby': headId, style: { '--swatch': p.color } },
     h('div', { class: 'project-head' },
       h('h2', { id: headId }, swatch(p.color), p.name, p.archived ? h('span', { class: 'badge' }, 'Archived') : null),
-      h('span', { class: 'project-total' }, formatTotal(totalMs)),
+      h('span', { class: 'project-total' }, formatHM(totalMs)),
       h('div', { class: 'row-actions' },
         h('button', { type: 'button', class: 'small', onclick: rename, 'aria-label': `Edit project ${p.name}` }, 'Edit'),
         h('button', { type: 'button', class: 'small', 'aria-label': `${p.archived ? 'Restore' : 'Archive'} project ${p.name}`,
@@ -443,7 +474,7 @@ function taskRow(p, t, ms) {
       h('span', null, t.name),
       t.archived ? h('span', { class: 'badge' }, 'Archived') : null,
     ),
-    h('span', { class: 'entry-dur' }, formatTotal(ms)),
+    h('span', { class: 'entry-dur' }, formatHM(ms)),
     h('div', { class: 'row-actions' },
       h('button', { type: 'button', class: 'small', onclick: rename, 'aria-label': `Rename task ${t.name}` }, 'Rename'),
       h('button', { type: 'button', class: 'small', 'aria-label': `${t.archived ? 'Restore' : 'Archive'} task ${t.name}`,

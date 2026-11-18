@@ -619,56 +619,175 @@
     gap: var(--space-3);
   }
 
-  /* Track */
-  .track { gap: var(--space-6); }
+  /* Track: day timesheet */
+  .timesheet { gap: var(--space-4); }
 
-  .hero {
-    display: grid;
-    gap: var(--space-1);
-  }
-  .hero-clock .clock {
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: clamp(3rem, 2rem + 6vw, 4.75rem);
-    letter-spacing: -0.045em;
-    line-height: 1;
-  }
-  .hero-task { margin-block-start: var(--space-3); font-size: 1.125rem; }
-  .hero-desc { color: var(--text-muted); overflow-wrap: anywhere; }
-  .hero-actions {
+  .ts-head {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    margin-block-start: var(--space-4);
-
-    & .stop { flex: 1 1 10rem; min-block-size: 3.25rem; font-size: 1.0625rem; border-radius: var(--radius-lg); }
-    & > button:not(.stop) { min-block-size: 3.25rem; border-radius: var(--radius-lg); }
-  }
-
-  .start-form {
-    display: grid;
+    align-items: center;
+    justify-content: space-between;
     gap: var(--space-3);
 
-    & h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.125rem; }
-    & .actions .primary { min-inline-size: 8rem; }
+    & h1 { font-size: 1.25rem; }
+    & .primary { padding-inline: var(--space-4) var(--space-5); }
   }
 
-  .totals {
+  .week-strip {
     display: flex;
-    gap: var(--space-6);
+    align-items: center;
+    gap: var(--space-1);
+    border-block: 1px solid var(--border);
+    padding-block: var(--space-2);
 
-    & dt { color: var(--text-muted); font-size: 0.875rem; }
-    & strong {
-      font-family: var(--font-display);
-      font-weight: 500;
-      font-size: 1.375rem;
-      letter-spacing: -0.02em;
-      font-variant-numeric: tabular-nums;
+    & ol {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    & ol a {
+      display: grid;
+      justify-items: center;
+      gap: var(--space-1);
+      padding-block: var(--space-1);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      text-decoration: none;
+
+      &:hover { background: var(--surface-2); }
+    }
+    & .ws-letter {
+      display: grid;
+      place-items: center;
+      inline-size: 2.25rem;
+      block-size: 2.25rem;
+      border-radius: 50%;
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--ink);
+    }
+    & .is-today .ws-letter { box-shadow: inset 0 0 0 1.5px var(--ink); }
+    & [aria-current="date"] .ws-letter { background: var(--ink); color: var(--on-ink); }
+    & [aria-current="date"] .ws-total { color: var(--ink); font-weight: 600; }
+    & .ws-total { font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+  }
+
+  .ts-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+
+    &.quiet { background: transparent; }
+  }
+
+  .ts-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+
+    &:not(:last-child) { border-block-end: 1px solid var(--border); }
+    & > .ts-toggle { grid-column: 3; }
+
+    /* The running row: tinted with the daytime sky, edged in the project color */
+    &.running {
+      background: light-dark(#E2EFF9, #1B2C44);
+      box-shadow: inset 4px 0 0 var(--c);
     }
   }
 
-  .recent h2 { color: var(--text-muted); font-size: 0.875rem; font-weight: 500; }
-  .play { color: var(--ink); border-radius: var(--radius-sm); }
+  .ts-open {
+    display: grid;
+    justify-items: start;
+    justify-content: stretch;
+    gap: 0.0625rem;
+    min-block-size: 0;
+    min-inline-size: 0;
+    padding: var(--space-1) 0;
+    border: 0;
+    background: transparent;
+    text-align: start;
+    white-space: normal;
+
+    &:hover:not(.static) .ts-task { text-decoration: underline; text-underline-offset: 0.2em; }
+    &:where(button):hover { background: transparent; }
+  }
+  .ts-project { display: inline-flex; align-items: center; color: var(--text-muted); font-size: 0.875rem; }
+  .ts-task { font-weight: 600; font-size: 1.0625rem; line-height: 1.3; overflow-wrap: anywhere; }
+  .ts-desc { font-size: 0.9375rem; overflow-wrap: anywhere; }
+
+  .ts-dur {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 1.125rem;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ts-toggle {
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    min-block-size: 0;
+    padding: 0;
+    border-radius: 50%;
+    border-color: var(--control-border);
+    color: var(--ink);
+
+    & .play-icon {
+      inline-size: 0;
+      block-size: 0;
+      margin-inline-start: 3px;
+      border-block: 0.4rem solid transparent;
+      border-inline-start: 0.65rem solid currentColor;
+    }
+    & .stop-icon { inline-size: 0.75rem; block-size: 0.75rem; border-radius: 2px; background: currentColor; }
+
+    &.stop { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+    &.stop:hover:not(:disabled) { background: color-mix(in oklab, var(--ink), var(--paper) 18%); }
+  }
+  @media (forced-colors: active) {
+    .ts-toggle .play-icon { border-inline-start-color: ButtonText; }
+    .ts-toggle .stop-icon { background: ButtonText; }
+  }
+
+  .ts-total {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4) 0;
+    color: var(--text-muted);
+  }
+  .ts-total-value { font-family: var(--font-display); font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  .ts-empty {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    border: 1px dashed var(--control-border);
+    border-radius: var(--radius-lg);
+    color: var(--text-muted);
+  }
+
+  .recent h2 { color: var(--text-muted); font-size: 0.875rem; font-weight: 500; margin-block-end: var(--space-2); }
+
+  .actions.split { justify-content: space-between; align-items: center; }
+  button.text-btn {
+    border-color: transparent;
+    background: transparent;
+    padding-inline: 0;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    &:hover:not(:disabled) { background: transparent; color: var(--text-muted); }
+  }
+
+  .intervals .list { margin-block: var(--space-3); }
 
   /* Entries */
   .week-nav {
