@@ -85,7 +85,7 @@ export async function buildPdf(report) {
   const margin = 40;
   const ink = [28, 31, 37];
   const muted = [90, 96, 108];
-  const accent = [15, 118, 110];
+  const accent = [24, 33, 47]; // Daylight ink
   doc.setProperties({ title: `Time report – ${report.title}`, creator: 'Time Tracker' });
 
   // Header

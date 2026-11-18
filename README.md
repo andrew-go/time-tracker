@@ -46,6 +46,8 @@ on localhost and active on GitHub Pages.
 | `js/ui.js` | DOM helpers, confirm/name dialogs |
 | `vendor/pdf.js` | jsPDF + jspdf-autotable bundle (MIT) |
 | `vendor/fonts/` | Noto Sans subset (Latin + Cyrillic, OFL) for PDFs |
+| `vendor/fonts/web/` | Golos Text + Unbounded, Latin + Cyrillic subsets (OFL) for the UI |
+| `js/ribbon.js` | The day ribbon (24-hour strip with entries as blocks) |
 | `vendor/temporal-polyfill.js` | Temporal polyfill, loaded only where `Temporal` is missing (Safari) |
 | `sw.js` | Offline cache |
 
@@ -77,3 +79,11 @@ merged record-by-record during sync.
   The token is kept in memory only.
 - OAuth client: Google Cloud project "Time Tracker", app in Testing mode with the owner as test
   user, authorized JavaScript origin `https://andrew-go.github.io`.
+
+## Design: "Daylight"
+
+The day is the organizing idea. A 24-hour ribbon shaded night → dawn → day → dusk shows
+entries as blocks in their project color (large on Track, a thin strip on each day in
+Entries). Everything else is quiet ink on paper. Type: Golos Text for the interface,
+Unbounded for the clock and big numbers. Light and dark palettes are paired with
+`light-dark()` tokens in `css/app.css`.

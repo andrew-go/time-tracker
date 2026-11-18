@@ -8,7 +8,7 @@
 //
 // Bump VERSION on every deploy that changes app files, and keep SHELL in sync
 // with the files the app loads.
-const VERSION = 'v4';
+const VERSION = 'v5';
 const CACHE = `time-tracker-${VERSION}`;
 const SHELL = [
   './',
@@ -27,10 +27,21 @@ const SHELL = [
   'js/google.js',
   'js/sync.js',
   'js/settings.js',
+  'js/ribbon.js',
   'vendor/temporal-polyfill.js',
   'vendor/pdf.js',
   'vendor/fonts/NotoSans-Regular.ttf',
   'vendor/fonts/NotoSans-Bold.ttf',
+  'vendor/fonts/web/golos-text-cyrillic-400-normal.woff2',
+  'vendor/fonts/web/golos-text-cyrillic-500-normal.woff2',
+  'vendor/fonts/web/golos-text-cyrillic-600-normal.woff2',
+  'vendor/fonts/web/golos-text-latin-400-normal.woff2',
+  'vendor/fonts/web/golos-text-latin-500-normal.woff2',
+  'vendor/fonts/web/golos-text-latin-600-normal.woff2',
+  'vendor/fonts/web/unbounded-cyrillic-500-normal.woff2',
+  'vendor/fonts/web/unbounded-cyrillic-700-normal.woff2',
+  'vendor/fonts/web/unbounded-latin-500-normal.woff2',
+  'vendor/fonts/web/unbounded-latin-700-normal.woff2',
   'icons/icon.svg',
   'icons/icon-192.png',
 ];

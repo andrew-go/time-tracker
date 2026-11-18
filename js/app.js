@@ -5,6 +5,7 @@ import {
 } from './time.js';
 import { openEntryDialog } from './entry-dialog.js';
 import { renderReports } from './reports.js';
+import { dayRibbon, entriesOnDay, updateRibbons } from './ribbon.js';
 import { formatSyncedAt, renderSettings } from './settings.js';
 import * as sync from './sync.js';
 import { announce, confirmDialog, fillDatalist, h, nameDialog, polyfillClosedBy } from './ui.js';
@@ -71,6 +72,7 @@ function tick() {
     const ms = Number(el.dataset.base) + (now - Number(el.dataset.start));
     el.textContent = el.classList.contains('clock') ? formatClock(ms) : formatTotal(ms);
   }
+  updateRibbons(now);
   const r = store.running();
   document.title = r ? `${formatClock(now - r.start)} · ${store.labelsOf(r).task}` : 'Time Tracker';
 }
@@ -131,32 +133,38 @@ async function deleteEntry(e) {
 function renderTrack() {
   const running = store.running();
   const now = Date.now();
-  const todayStart = startOfDay(today());
-  const todays = store.entries().filter((e) => (e.end ?? now) > todayStart);
-  const todayMs = store.totalMs(todays.map((e) => ({ ...e, start: Math.max(e.start, todayStart) })), now);
+  const day = today();
+  const todayStart = startOfDay(day);
+  const weekStartMs = startOfDay(weekStart(day));
+  const clipFrom = (from) => (e) => ({ ...e, start: Math.max(e.start, from) });
+  const all = store.entries();
+  const todays = entriesOnDay(day, all);
+  const todayMs = store.totalMs(todays.map(clipFrom(todayStart)), now);
+  const weekMs = store.totalMs(all.filter((e) => (e.end ?? now) > weekStartMs).map(clipFrom(weekStartMs)), now);
+  const total = (ms) => running
+    ? h('strong', { 'data-clock': 'total', 'data-start': now, 'data-base': ms }, formatTotal(ms))
+    : h('strong', null, formatTotal(ms));
 
-  return h('div', { class: 'stack' },
-    h('h1', { class: 'view-title' }, 'Track'),
-    running ? runningCard(running) : startForm(),
-    h('p', { class: 'today-total' },
-      'Today: ',
-      running
-        ? h('strong', { 'data-clock': 'total', 'data-start': now, 'data-base': todayMs }, formatTotal(todayMs))
-        : h('strong', null, formatTotal(todayMs)),
+  return h('div', { class: 'stack track' },
+    h('h1', { class: 'visually-hidden' }, 'Track'),
+    dayRibbon(day, todays),
+    running ? runningHero(running) : startForm(),
+    h('dl', { class: 'totals' },
+      h('div', null, h('dt', null, 'Today'), h('dd', null, total(todayMs))),
+      h('div', null, h('dt', null, 'This week'), h('dd', null, total(weekMs))),
     ),
     recentList(running),
   );
 }
 
-function runningCard(r) {
+function runningHero(r) {
   const l = store.labelsOf(r);
-  return h('section', { class: 'card running', 'aria-labelledby': 'running-title', style: { '--swatch': l.color } },
+  return h('section', { class: 'hero', 'aria-labelledby': 'running-title' },
     h('h2', { id: 'running-title', class: 'visually-hidden' }, 'Running timer'),
-    h('p', { class: 'running-label' }, entryLabel(r)),
-    r.description ? h('p', { class: 'running-desc' }, r.description) : null,
-    h('p', { class: 'running-clock' }, clock(r.start, 0, 'clock big')),
-    h('p', { class: 'running-since' }, `Started at ${timeOf(r.start)}`),
-    h('div', { class: 'actions' },
+    h('p', { class: 'hero-clock' }, clock(r.start, 0, 'clock')),
+    h('p', { class: 'hero-task' }, entryLabel(r)),
+    h('p', { class: 'hero-desc' }, r.description ? `${r.description} · since ${timeOf(r.start)}` : `Since ${timeOf(r.start)}`),
+    h('div', { class: 'hero-actions' },
       h('button', { type: 'button', class: 'primary stop', id: 'stop-btn', onclick: async () => {
         await store.stopTimer();
         announce('Timer stopped');
@@ -223,7 +231,7 @@ function recentList(running) {
   if (!combos.length) {
     return h('p', { class: 'empty' }, 'Your recent tasks will appear here for one-click restart.');
   }
-  return h('section', { 'aria-labelledby': 'recent-title' },
+  return h('section', { class: 'recent', 'aria-labelledby': 'recent-title' },
     h('h2', { id: 'recent-title' }, 'Recent'),
     h('ul', { class: 'list' },
       combos.map((c, i) => {
@@ -300,6 +308,7 @@ function daySection(day, dayEntries, now) {
         ? h('span', { class: 'day-total', 'data-clock': 'total', 'data-start': running.start, 'data-base': doneMs })
         : h('span', { class: 'day-total' }, formatTotal(doneMs)),
     ),
+    dayRibbon(day, dayEntries, { size: 'small' }),
     h('ul', { class: 'list' },
       dayEntries.map((e) => h('li', { class: 'row entry' },
         h('span', { class: 'entry-time' }, `${timeOf(e.start)}–${e.end ? timeOf(e.end) : 'now'}`),
