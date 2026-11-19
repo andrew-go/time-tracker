@@ -412,6 +412,11 @@
     }
     &.small .blk { inset-block: 20%; border-radius: 2px; }
 
+    /* The running block's dots step toward "now", one cell at a time. */
+    @media (prefers-reduced-motion: no-preference) {
+      & .blk.run::before { animation: dots-drift 2s steps(4, end) infinite; }
+    }
+
     & .now {
       position: absolute;
       inset-block: -0.375rem;
@@ -752,6 +757,54 @@
   .ts-project { display: inline-flex; align-items: center; color: var(--text-muted); font-size: 0.875rem; }
   .ts-task { font-weight: 600; font-size: 1.0625rem; line-height: 1.3; overflow-wrap: anywhere; }
   .ts-desc { font-size: 0.9375rem; overflow-wrap: anywhere; }
+
+  /* "Tracking now" cues: a labelled badge (always), plus gentle motion when the
+     user hasn't asked for reduced motion: the badge dot breathes, the colon in
+     the live time ticks once a second, and the running ribbon block's dots
+     drift toward "now". Opacity/transform only; nothing flashes. */
+  .tracking-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-inline-start: var(--space-2);
+    padding: 0 0.5rem;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--c, var(--ink)) 16%, transparent);
+    color: var(--ink);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.5rem;
+    white-space: nowrap;
+  }
+  .rec-dot {
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    border-radius: 50%;
+    background: var(--c, var(--danger));
+    forced-color-adjust: none;
+
+    @media (prefers-reduced-motion: no-preference) {
+      animation: rec-breathe 1.6s ease-in-out infinite;
+    }
+  }
+  @keyframes rec-breathe {
+    0%, 100% { opacity: 1; scale: 1; }
+    50% { opacity: 0.35; scale: 0.7; }
+  }
+
+  .ticking .colon {
+    display: inline-block;
+    @media (prefers-reduced-motion: no-preference) {
+      animation: colon-tick 1s steps(1, end) infinite;
+    }
+  }
+  @keyframes dots-drift {
+    from { -webkit-mask-position: 0 0; mask-position: 0 0; }
+    to { -webkit-mask-position: calc(var(--blk-cell) * 4) 0; mask-position: calc(var(--blk-cell) * 4) 0; }
+  }
+  @keyframes colon-tick {
+    50% { opacity: 0.25; }
+  }
 
   .ts-dur {
     font-family: var(--font-display);

@@ -71,7 +71,13 @@ function tick() {
   const now = Date.now();
   for (const el of document.querySelectorAll('[data-clock]')) {
     const ms = Number(el.dataset.base) + (now - Number(el.dataset.start));
-    el.textContent = el.classList.contains('clock') ? formatClock(ms) : formatHM(ms);
+    if (el.dataset.clock === 'hm-live') {
+      const [hours, minutes] = formatHM(ms).split(':');
+      el.querySelector('.hh').textContent = hours;
+      el.querySelector('.mm').textContent = minutes;
+    } else {
+      el.textContent = el.classList.contains('clock') ? formatClock(ms) : formatHM(ms);
+    }
   }
   updateRibbons(now);
   const r = store.running();
@@ -142,13 +148,26 @@ function startedOn(day, list) {
   return list.filter((e) => e.start >= from && e.start < to);
 }
 
+/** "1:24" with the colon in its own element, so it can tick like a clock. */
+function tickingHM(ms, attrs) {
+  const [hours, minutes] = formatHM(ms).split(':');
+  return h('span', { ...attrs, class: `${attrs.class ?? ''} ticking`.trim() },
+    h('span', { class: 'hh' }, hours), h('span', { class: 'colon' }, ':'), h('span', { class: 'mm' }, minutes));
+}
+
+/** Shown on the entry that is being tracked right now. */
+const trackingBadge = () =>
+  h('span', { class: 'tracking-badge' }, h('span', { class: 'rec-dot', 'aria-hidden': 'true' }), 'Tracking');
+
 /** Total for a list; a running entry makes it a live element. */
-function liveTotal(list, attrs = {}) {
+function liveTotal(list, attrs = {}, { ticking = false } = {}) {
   const run = list.find((e) => e.end == null);
   const done = store.totalMs(list.filter((e) => e.end != null));
-  return run
-    ? h('span', { ...attrs, 'data-clock': 'hm', 'data-start': run.start, 'data-base': done }, formatHM(done + Date.now() - run.start))
-    : h('span', attrs, formatHM(done));
+  if (!run) return h('span', attrs, formatHM(done));
+  const live = { ...attrs, 'data-start': run.start, 'data-base': done };
+  return ticking
+    ? tickingHM(done + Date.now() - run.start, { ...live, 'data-clock': 'hm-live' })
+    : h('span', { ...live, 'data-clock': 'hm' }, formatHM(done + Date.now() - run.start));
 }
 
 function renderTrack(params) {
@@ -234,12 +253,13 @@ function timesheetRow(group, day, isToday) {
 
   return h('li', { class: run ? 'ts-row running' : 'ts-row', style: { '--c': l.color } },
     h('button', { type: 'button', class: 'ts-open', onclick: open,
-      'aria-label': `Edit ${name}${group.length > 1 ? ` (${group.length} time ranges)` : ''}` },
-      h('span', { class: 'ts-project' }, h('span', { class: 'swatch', style: { '--swatch': l.color }, 'aria-hidden': 'true' }), l.project),
+      'aria-label': `Edit ${name}${group.length > 1 ? ` (${group.length} time ranges)` : ''}${run ? ', tracking now' : ''}` },
+      h('span', { class: 'ts-project' }, h('span', { class: 'swatch', style: { '--swatch': l.color }, 'aria-hidden': 'true' }), l.project,
+        run ? trackingBadge() : null),
       h('span', { class: 'ts-task' }, l.task),
       desc ? h('span', { class: 'ts-desc' }, desc) : null,
     ),
-    liveTotal(group, { class: 'ts-dur' }),
+    liveTotal(group, { class: 'ts-dur' }, { ticking: true }),
     toggle,
   );
 }
@@ -345,12 +365,12 @@ function daySection(day, dayEntries, now) {
       dayEntries.map((e) => h('li', { class: 'row entry' },
         h('span', { class: 'entry-time' }, `${timeOf(e.start)}–${e.end ? timeOf(e.end) : 'now'}`),
         h('div', { class: 'row-main' },
-          entryLabel(e),
+          h('span', null, entryLabel(e), e.end == null ? trackingBadge() : null),
           e.description ? h('span', { class: 'row-desc' }, e.description) : null,
         ),
         e.end
           ? h('span', { class: 'entry-dur' }, formatHM(e.end - e.start))
-          : h('span', { class: 'entry-dur', 'data-clock': 'hm', 'data-start': e.start, 'data-base': 0 }, formatHM(Date.now() - e.start)),
+          : tickingHM(Date.now() - e.start, { class: 'entry-dur', 'data-clock': 'hm-live', 'data-start': e.start, 'data-base': 0 }),
         h('div', { class: 'row-actions' },
           h('button', { type: 'button', class: 'small', id: `edit-${e.id}`, onclick: () => openEntryDialog(e),
             'aria-label': `Edit ${store.labelsOf(e).task} at ${timeOf(e.start)}` }, 'Edit'),
