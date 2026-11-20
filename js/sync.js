@@ -174,4 +174,4 @@ export async function readBackup(file) {
   };
 }
 
-export const restoreBackup = (data) => store.mergeSnapshot(data);
+export const restoreBackup = (data) => store.mergeSnapshot(store.alignByName(data));

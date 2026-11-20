@@ -162,6 +162,34 @@ export const removeEntry = (id) => save('entries', { ...entry(id), deleted: true
 
 export const SNAPSHOT_FORMAT = 'time-tracker';
 
+/**
+ * For backup files (not Drive sync): point incoming projects and tasks at the
+ * ones you already have with the same name, so restoring or importing a file
+ * never creates a second "Docomotion". Returns a new snapshot; input untouched.
+ */
+export function alignByName(data) {
+  const projectIds = new Map();
+  const projects = data.projects.filter((p) => {
+    if (p.deleted || state.projects.has(p.id) || typeof p.name !== 'string') return true;
+    const mine = live(state.projects).find((x) => norm(x.name) === norm(p.name));
+    if (!mine) return true;
+    projectIds.set(p.id, mine.id);
+    return false;
+  });
+  const taskIds = new Map();
+  const tasks = data.tasks
+    .map((t) => (projectIds.has(t.projectId) ? { ...t, projectId: projectIds.get(t.projectId) } : t))
+    .filter((t) => {
+      if (t.deleted || state.tasks.has(t.id) || typeof t.name !== 'string') return true;
+      const mine = live(state.tasks).find((x) => x.projectId === t.projectId && norm(x.name) === norm(t.name));
+      if (!mine) return true;
+      taskIds.set(t.id, mine.id);
+      return false;
+    });
+  const entries = data.entries.map((e) => (taskIds.has(e.taskId) ? { ...e, taskId: taskIds.get(e.taskId) } : e));
+  return { ...data, projects, tasks, entries };
+}
+
 /** Everything, including tombstones, as one JSON-serializable object. */
 export function snapshot() {
   return {
