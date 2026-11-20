@@ -47,21 +47,17 @@
 
   <p id="status" class="status" role="status"></p>
 
-  <!-- Shared suggestion list: every project name, for "pick or type new" inputs -->
-  <datalist id="dl-projects"></datalist>
-
   <!-- Add / edit a time entry. Esc closes; no click-outside so typed changes aren't lost by accident. -->
   <dialog id="entry-dialog" aria-labelledby="entry-dialog-title">
     <form method="dialog" id="entry-form">
       <h2 id="entry-dialog-title">Edit entry</h2>
       <div class="field">
         <label for="ef-project">Project <span class="req" aria-hidden="true">*</span></label>
-        <input id="ef-project" name="project" list="dl-projects" required autocomplete="off" enterkeyhint="next">
+        <input id="ef-project" name="project" required autocomplete="off" enterkeyhint="next">
       </div>
       <div class="field">
         <label for="ef-task">Task <span class="req" aria-hidden="true">*</span></label>
-        <input id="ef-task" name="task" list="dl-entry-tasks" required autocomplete="off" enterkeyhint="next">
-        <datalist id="dl-entry-tasks"></datalist>
+        <input id="ef-task" name="task" required autocomplete="off" enterkeyhint="next">
       </div>
       <div class="field">
         <label for="ef-description">Description</label>
@@ -95,12 +91,11 @@
       <h2 id="start-dialog-title">Start a timer</h2>
       <div class="field">
         <label for="sd-project">Project <span class="req" aria-hidden="true">*</span></label>
-        <input id="sd-project" name="project" list="dl-projects" required autocomplete="off" enterkeyhint="next" aria-describedby="sd-help">
+        <input id="sd-project" name="project" required autocomplete="off" enterkeyhint="next" aria-describedby="sd-help">
       </div>
       <div class="field">
         <label for="sd-task">Task <span class="req" aria-hidden="true">*</span></label>
-        <input id="sd-task" name="task" list="dl-start-tasks" required autocomplete="off" enterkeyhint="next">
-        <datalist id="dl-start-tasks"></datalist>
+        <input id="sd-task" name="task" required autocomplete="off" enterkeyhint="next">
       </div>
       <div class="field">
         <label for="sd-description">Description</label>

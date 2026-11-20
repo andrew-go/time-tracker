@@ -1,6 +1,7 @@
 import * as store from './store.js';
 import { dayOf, timeOf, toMs, today } from './time.js';
-import { announce, fillDatalist, runDialog } from './ui.js';
+import { announce, runDialog } from './ui.js';
+import { springCombo } from './combo.js';
 
 const dialog = () => document.getElementById('entry-dialog');
 const $ = (sel) => dialog().querySelector(sel);
@@ -10,9 +11,19 @@ function projectByName(name) {
   return store.projects({ archived: true }).find((p) => p.name.toLocaleLowerCase() === n);
 }
 
-function refreshTaskSuggestions() {
-  const p = projectByName($('#ef-project').value);
-  fillDatalist($('#dl-entry-tasks'), p ? store.tasks(p.id).map((t) => t.name) : []);
+// Project and task fields: pick from what exists, or type a new name.
+const projectOptions = () => store.projects().map((p) => ({ label: p.name, color: p.color }));
+const taskOptions = (projectInput) => () => {
+  const p = projectByName(projectInput.value);
+  return p ? store.tasks(p.id).map((t) => ({ label: t.name, color: p.color })) : [];
+};
+const upgraded = new WeakSet();
+function pickers(form) {
+  if (upgraded.has(form)) return;
+  upgraded.add(form);
+  const [project, task] = form.querySelectorAll('input[name="project"], input[name="task"]');
+  springCombo(project, { options: projectOptions, label: 'projects' });
+  springCombo(task, { options: taskOptions(project), label: 'tasks' });
 }
 
 const roundTo5 = (ms) => Math.floor(ms / 300_000) * 300_000;
@@ -55,6 +66,7 @@ function validate(isRunning) {
 export async function openEntryDialog(existing = null, preset = {}) {
   const isRunning = existing != null && existing.end == null;
   const form = $('#entry-form');
+  pickers(form);
   form.reset();
 
   $('#entry-dialog-title').textContent = existing ? 'Edit entry' : 'Add entry';
@@ -78,18 +90,14 @@ export async function openEntryDialog(existing = null, preset = {}) {
   }
   $('#ef-end').disabled = isRunning;
   $('#ef-end').required = !isRunning;
-  refreshTaskSuggestions();
   validate(isRunning);
 
-  const onProject = () => refreshTaskSuggestions();
   const onTime = () => validate(isRunning);
-  $('#ef-project').addEventListener('input', onProject);
   form.addEventListener('input', onTime);
   const pending = runDialog(dialog()); // opens synchronously
   (existing ? $('#ef-description') : $('#ef-project')).focus();
 
   const result = await pending;
-  $('#ef-project').removeEventListener('input', onProject);
   form.removeEventListener('input', onTime);
   if (result !== 'save') return false;
 
@@ -114,19 +122,20 @@ const startDialog = () => document.getElementById('start-dialog');
 export async function openStartDialog() {
   const d = startDialog();
   const form = d.querySelector('#start-form');
+  pickers(form);
   form.reset();
-  fillDatalist(document.getElementById('dl-projects'), store.projects().map((p) => p.name));
-  const taskList = d.querySelector('#dl-start-tasks');
-  const refresh = () => {
-    const p = projectByName(d.querySelector('#sd-project').value);
-    fillDatalist(taskList, p ? store.tasks(p.id).map((t) => t.name) : []);
+  // Enter in a field starts the timer. Without this the browser presses the first
+  // button in the form, which is "Add past time instead".
+  const onEnter = (e) => {
+    if (e.key !== 'Enter' || e.defaultPrevented || e.isComposing || e.target.localName !== 'input') return;
+    e.preventDefault();
+    form.requestSubmit(form.querySelector('button[value="start"]'));
   };
-  refresh();
-  d.querySelector('#sd-project').addEventListener('input', refresh);
+  form.addEventListener('keydown', onEnter);
   const pending = runDialog(d);
   d.querySelector('#sd-project').focus();
   const result = await pending;
-  d.querySelector('#sd-project').removeEventListener('input', refresh);
+  form.removeEventListener('keydown', onEnter);
 
   const values = {
     project: d.querySelector('#sd-project').value,

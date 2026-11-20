@@ -13,10 +13,6 @@ export function h(tag, props, ...children) {
   return el;
 }
 
-export function fillDatalist(list, names) {
-  list.replaceChildren(...names.map((value) => h('option', { value })));
-}
-
 /** Save a generated file via a temporary download link. */
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
