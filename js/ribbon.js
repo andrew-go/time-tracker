@@ -126,23 +126,55 @@ export function linkRibbon(ribbon, list) {
   }
   const clear = () => light(null, []);
 
-  sky.addEventListener('pointermove', (ev) => {
-    // The block under the pointer, or the nearest one within 8px (short entries are thin).
-    let best = null, dist = 9;
+  // The block under the pointer, or the nearest one within reach (short entries
+  // are thin; a fingertip gets more room than a mouse).
+  function pointAt(ev) {
+    let best = null, dist = ev.pointerType === 'touch' ? 17 : 9;
     for (const b of sky.querySelectorAll('.blk')) {
       const r = b.getBoundingClientRect();
       const d = ev.clientX < r.left ? r.left - ev.clientX : ev.clientX > r.right ? ev.clientX - r.right : 0;
       if (d < dist) { dist = d; best = b; }
     }
-    if (!best) return clear();
+    if (!best) { clear(); return null; }
     const row = rowOf(best.dataset.entry);
-    const ids = row ? row.dataset.entries.split(' ') : [best.dataset.entry];
-    light(row, ids, best);
+    light(row, row ? row.dataset.entries.split(' ') : [best.dataset.entry], best);
+    return row;
+  }
+
+  // Mouse and pen: follow the pointer, clear when it leaves.
+  // Touch: tap a block (or slide a finger along the ribbon) and the choice stays
+  // until you tap somewhere else; its row scrolls into view if it's off screen.
+  // `touch-action: pan-y` on the ribbon lets a vertical swipe still scroll the page.
+  let touchRow = null, touching = false;
+  sky.addEventListener('pointerdown', (ev) => {
+    if (ev.pointerType !== 'touch') return;
+    touching = true;
+    touchRow = pointAt(ev);
   });
-  sky.addEventListener('pointerleave', clear);
+  sky.addEventListener('pointermove', (ev) => {
+    if (ev.pointerType !== 'touch') pointAt(ev);
+    else if (touching) touchRow = pointAt(ev);
+  });
+  sky.addEventListener('pointerup', (ev) => {
+    if (ev.pointerType !== 'touch' || !touching) return;
+    touching = false;
+    if (touchRow) {
+      const r = touchRow.getBoundingClientRect();
+      if (r.top < 0 || r.bottom > innerHeight) {
+        touchRow.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      }
+    }
+  });
+  sky.addEventListener('pointercancel', () => { touching = false; clear(); }); // became a page scroll
+  sky.addEventListener('pointerleave', (ev) => { if (ev.pointerType !== 'touch') clear(); });
+  const onOutside = (ev) => {
+    if (!sky.isConnected) return document.removeEventListener('pointerdown', onOutside);
+    if (ev.pointerType === 'touch' && !sky.contains(ev.target)) clear();
+  };
+  document.addEventListener('pointerdown', onOutside);
 
   for (const row of list?.querySelectorAll('li[data-entries]') ?? []) {
-    row.addEventListener('pointerenter', () => light(row, row.dataset.entries.split(' ')));
-    row.addEventListener('pointerleave', clear);
+    row.addEventListener('pointerenter', (ev) => { if (ev.pointerType !== 'touch') light(row, row.dataset.entries.split(' ')); });
+    row.addEventListener('pointerleave', (ev) => { if (ev.pointerType !== 'touch') clear(); });
   }
 }

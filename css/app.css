@@ -415,6 +415,7 @@
     /* Pointing at an entry (js/ribbon.js linkRibbon): its blocks stay, others dim. */
     position: relative;
     & .blk { transition: opacity 120ms ease-out; }
+    .timesheet & .sky { touch-action: pan-y; } /* horizontal finger slide scrubs the ribbon */
     & .sky[data-hl] .blk:not(.hl) { opacity: 0.3; }
     & .sky[data-hl] .blk.hl { outline: 2px solid var(--ink); outline-offset: 1px; }
     & .blk-tip {
