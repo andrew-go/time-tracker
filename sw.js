@@ -8,7 +8,7 @@
 //
 // Bump VERSION on every deploy that changes app files, and keep SHELL in sync
 // with the files the app loads.
-const VERSION = 'v14';
+const VERSION = 'v15';
 const CACHE = `time-tracker-${VERSION}`;
 const SHELL = [
   './',
@@ -22,6 +22,7 @@ const SHELL = [
   'js/ui.js',
   'js/entry-dialog.js',
   'js/combo.js',
+  'js/expand.js',
   'js/reports.js',
   'js/export.js',
   'js/config.js',

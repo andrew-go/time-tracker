@@ -9,6 +9,7 @@ import { dayRibbon, entriesOnDay, updateRibbons } from './ribbon.js';
 import { formatSyncedAt, renderSettings } from './settings.js';
 import * as sync from './sync.js';
 import { loadDither } from './dither.js';
+import { expandList } from './expand.js';
 import { announce, confirmDialog, h, nameDialog, polyfillClosedBy } from './ui.js';
 
 const view = document.getElementById('view');
@@ -218,7 +219,7 @@ function renderTrack(params) {
     groups.length
       ? h('section', { 'aria-labelledby': 'ts-list-title' },
           h('h2', { id: 'ts-list-title', class: 'visually-hidden' }, 'Time entries'),
-          h('ul', { class: 'ts-list' }, groups.map((g) => timesheetRow(g, day, isToday))),
+          tsList(groups, day, isToday),
           h('p', { class: 'ts-total' }, h('span', null, 'Total'), liveTotal(dayEntries, { class: 'ts-total-value' })),
         )
       : h('div', { class: 'ts-empty' },
@@ -231,12 +232,27 @@ function renderTrack(params) {
   );
 }
 
+// Which timesheet row is open, so it stays open when the view re-renders.
+let openRow = { day: '', key: null };
+
+function tsList(groups, day, isToday) {
+  const list = h('ul', { class: 'ts-list' }, groups.map((g) => timesheetRow(g, day, isToday)));
+  const d = day.toString();
+  expandList(list, {
+    openKey: openRow.day === d ? openRow.key : null,
+    onChange: (key) => { openRow = { day: d, key }; },
+  });
+  return list;
+}
+
 function timesheetRow(group, day, isToday) {
   const first = group[0];
   const l = store.labelsOf(first);
   const desc = first.description ?? '';
   const run = group.find((e) => e.end == null);
   const name = `${l.task}${desc ? `, ${desc}` : ''}`;
+  const key = `${first.taskId}\u0000${desc}`;
+  const moreId = `more-${first.id}`;
 
   const toggle = run
     ? h('button', { type: 'button', class: 'ts-toggle stop', 'aria-label': `Stop ${name}`, onclick: async () => {
@@ -249,11 +265,35 @@ function timesheetRow(group, day, isToday) {
         if (!isToday) location.hash = '#/track';
       } }, h('span', { class: 'play-icon', 'aria-hidden': 'true' }));
 
-  const open = () => (group.length === 1 ? openEntryDialog(first) : openIntervals(group, name));
+  // The card that opens under the row: each time range with Edit and Delete,
+  // plus a way to log more time on the same task.
+  const ranges = [...group].sort((a, b) => a.start - b.start);
+  const more = h('div', { class: 'ts-more', id: moreId, role: 'region', 'aria-label': `${name}: time ranges` },
+    h('div', { class: 'ts-more-inner' },
+      h('ul', { class: 'ts-ranges' }, ranges.map((e) => {
+        const range = `${timeOf(e.start)}–${e.end ? timeOf(e.end) : 'now'}`;
+        return h('li', null,
+          h('span', { class: 'entry-time' }, range),
+          e.end
+            ? h('span', { class: 'entry-dur' }, formatHM(e.end - e.start))
+            : tickingHM(Date.now() - e.start, { class: 'entry-dur', 'data-clock': 'hm-live', 'data-start': e.start, 'data-base': 0 }),
+          h('span', { class: 'ts-range-actions' },
+            h('button', { type: 'button', class: 'small', id: `edit-${e.id}`, onclick: () => openEntryDialog(e),
+              'aria-label': `Edit ${range}` }, 'Edit'),
+            h('button', { type: 'button', class: 'small danger-text', onclick: () => deleteEntry(e),
+              'aria-label': `Delete ${range}` }, 'Delete'),
+          ),
+        );
+      })),
+      h('button', { type: 'button', class: 'small ts-add', id: `add-${first.id}`,
+        onclick: () => openEntryDialog(null, { date: day, project: l.project, task: l.task, description: desc }) },
+        '+ Add time to this task'),
+    ),
+  );
 
-  return h('li', { class: run ? 'ts-row running' : 'ts-row', style: { '--c': l.color } },
-    h('button', { type: 'button', class: 'ts-open', onclick: open,
-      'aria-label': `Edit ${name}${group.length > 1 ? ` (${group.length} time ranges)` : ''}${run ? ', tracking now' : ''}` },
+  return h('li', { class: run ? 'ts-row running' : 'ts-row', style: { '--c': l.color }, 'data-key': key },
+    h('button', { type: 'button', class: 'ts-open', id: `open-${first.id}`, 'aria-controls': moreId,
+      'aria-label': `${name}${group.length > 1 ? `, ${group.length} time ranges` : ''}${run ? ', tracking now' : ''}` },
       h('span', { class: 'ts-project' }, h('span', { class: 'swatch', style: { '--swatch': l.color }, 'aria-hidden': 'true' }), l.project,
         run ? trackingBadge() : null),
       h('span', { class: 'ts-task' }, l.task),
@@ -261,28 +301,8 @@ function timesheetRow(group, day, isToday) {
     ),
     liveTotal(group, { class: 'ts-dur' }, { ticking: true }),
     toggle,
+    more,
   );
-}
-
-/** A row that combines several time ranges: list them for editing. */
-function openIntervals(group, name) {
-  const dialog = h('dialog', { class: 'intervals', 'aria-labelledby': 'iv-title', closedby: 'any' },
-    h('h2', { id: 'iv-title' }, name),
-    h('ul', { class: 'list' }, group.map((e) => h('li', { class: 'row' },
-      h('span', { class: 'row-main entry-time' }, `${timeOf(e.start)}–${e.end ? timeOf(e.end) : 'now'}`),
-      h('span', { class: 'entry-dur' }, e.end ? formatHM(e.end - e.start) : 'running'),
-      h('div', { class: 'row-actions' },
-        h('button', { type: 'button', class: 'small', onclick: () => { dialog.close(); openEntryDialog(e); },
-          'aria-label': `Edit ${timeOf(e.start)}` }, 'Edit'),
-        h('button', { type: 'button', class: 'small danger-text', onclick: () => { dialog.close(); deleteEntry(e); },
-          'aria-label': `Delete ${timeOf(e.start)}` }, 'Delete'),
-      ),
-    ))),
-    h('form', { method: 'dialog', class: 'actions' }, h('button', { autofocus: true }, 'Close')),
-  );
-  dialog.addEventListener('close', () => dialog.remove());
-  document.body.append(dialog);
-  dialog.showModal();
 }
 
 /** Recent task + description pairs not already on today's sheet. */
