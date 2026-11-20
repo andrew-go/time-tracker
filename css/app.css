@@ -412,6 +412,30 @@
     }
     &.small .blk { inset-block: 20%; border-radius: 2px; }
 
+    /* Pointing at an entry (js/ribbon.js linkRibbon): its blocks stay, others dim. */
+    position: relative;
+    & .blk { transition: opacity 120ms ease-out; }
+    & .sky[data-hl] .blk:not(.hl) { opacity: 0.3; }
+    & .sky[data-hl] .blk.hl { outline: 2px solid var(--ink); outline-offset: 1px; }
+    & .blk-tip {
+      position: absolute;
+      z-index: 2;
+      inset-block-end: calc(100% + var(--space-1));
+      translate: -50% 0;
+      max-inline-size: min(22rem, 100%);
+      padding: 0.25rem 0.5rem;
+      border-radius: var(--radius-sm);
+      background: var(--ink);
+      color: var(--on-ink);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
+      &[hidden] { display: none; }
+    }
+
     /* The running block's dots step toward "now", one cell at a time. */
     @media (prefers-reduced-motion: no-preference) {
       & .blk.run::before { animation: dots-drift 2s steps(4, end) infinite; }
@@ -734,6 +758,11 @@
     &:not(:last-child) { border-block-end: 1px solid var(--border); }
     & > .ts-toggle { grid-column: 3; }
     &[data-open] { background: var(--surface-2); }
+    /* Its entry is pointed at on the ribbon (or the row itself is hovered). */
+    &.is-hover { background: var(--surface-2); box-shadow: inset 4px 0 0 var(--c); }
+    @media (prefers-reduced-motion: no-preference) {
+      transition: background-color 120ms ease-out;
+    }
 
     /* The running row: tinted with the daytime sky, edged in the project color */
     &.running {

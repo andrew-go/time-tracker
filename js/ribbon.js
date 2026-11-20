@@ -41,6 +41,7 @@ export function dayRibbon(day, entries, { size = 'large', cell = 3 } = {}) {
           '--c': store.labelsOf(e).color,
         },
         'data-from': e.end == null ? from : null,
+        'data-entry': e.id,
       });
     });
 
@@ -88,3 +89,60 @@ export function entriesOnDay(day, list = store.entries()) {
   return list.filter((e) => (e.end ?? now) > start && e.start < end);
 }
 
+
+/**
+ * Hovering the ribbon points at the entry under the pointer: its blocks stay
+ * bright, the rest dim, a label shows the task and time range, and its row in
+ * `list` (li[data-entries]) lights up. Hovering a row lights up its blocks.
+ * A mouse/pen/touch-drag nicety; the same facts are in the rows themselves.
+ */
+export function linkRibbon(ribbon, list) {
+  const sky = ribbon.querySelector('.sky');
+  const tip = h('span', { class: 'blk-tip', 'aria-hidden': 'true', hidden: true });
+  ribbon.append(tip);
+  const rowOf = (id) => list?.querySelector(`li[data-entries~="${CSS.escape(id)}"]`);
+  let current = null;
+
+  function light(row, ids, entry = null) {
+    if (current !== row) {
+      current?.classList.remove('is-hover');
+      row?.classList.add('is-hover');
+      current = row;
+    }
+    const set = new Set(ids);
+    sky.toggleAttribute('data-hl', set.size > 0);
+    for (const b of sky.querySelectorAll('.blk')) b.classList.toggle('hl', set.has(b.dataset.entry));
+    if (!entry) { tip.hidden = true; return; }
+    const e = store.entries().find((x) => x.id === entry.dataset.entry);
+    if (!e) { tip.hidden = true; return; }
+    const l = store.labelsOf(e);
+    tip.textContent = `${timeOf(e.start)}–${e.end ? timeOf(e.end) : 'now'} · ${l.task}`; // time first: long names get cut
+    tip.hidden = false;
+    // Centre the label over the block, kept inside the ribbon.
+    const r = ribbon.getBoundingClientRect(), b = entry.getBoundingClientRect();
+    const half = tip.offsetWidth / 2;
+    const x = Math.min(Math.max(b.left + b.width / 2 - r.left, half), r.width - half);
+    tip.style.insetInlineStart = `${x}px`;
+  }
+  const clear = () => light(null, []);
+
+  sky.addEventListener('pointermove', (ev) => {
+    // The block under the pointer, or the nearest one within 8px (short entries are thin).
+    let best = null, dist = 9;
+    for (const b of sky.querySelectorAll('.blk')) {
+      const r = b.getBoundingClientRect();
+      const d = ev.clientX < r.left ? r.left - ev.clientX : ev.clientX > r.right ? ev.clientX - r.right : 0;
+      if (d < dist) { dist = d; best = b; }
+    }
+    if (!best) return clear();
+    const row = rowOf(best.dataset.entry);
+    const ids = row ? row.dataset.entries.split(' ') : [best.dataset.entry];
+    light(row, ids, best);
+  });
+  sky.addEventListener('pointerleave', clear);
+
+  for (const row of list?.querySelectorAll('li[data-entries]') ?? []) {
+    row.addEventListener('pointerenter', () => light(row, row.dataset.entries.split(' ')));
+    row.addEventListener('pointerleave', clear);
+  }
+}

@@ -5,7 +5,7 @@ import {
 } from './time.js';
 import { openEntryDialog, openStartDialog } from './entry-dialog.js';
 import { renderReports } from './reports.js';
-import { dayRibbon, entriesOnDay, updateRibbons } from './ribbon.js';
+import { dayRibbon, entriesOnDay, linkRibbon, updateRibbons } from './ribbon.js';
 import { formatSyncedAt, renderSettings } from './settings.js';
 import * as sync from './sync.js';
 import { loadDither } from './dither.js';
@@ -186,6 +186,9 @@ function renderTrack(params) {
     (e) => `${e.taskId}\u0000${e.description ?? ''}`).values()];
 
   const trackTime = () => (isToday ? openStartDialog() : openEntryDialog(null, { date: day }));
+  const ribbon = dayRibbon(day, entriesOnDay(day, all), { size: 'small', cell: 3 });
+  const list = groups.length ? tsList(groups, day, isToday) : null;
+  linkRibbon(ribbon, list);
 
   return h('div', { class: 'stack timesheet' },
     h('div', { class: 'ts-head' },
@@ -214,12 +217,12 @@ function renderTrack(params) {
         h('span', { 'aria-hidden': 'true' }, '›')),
     ),
 
-    dayRibbon(day, entriesOnDay(day, all), { size: 'small', cell: 3 }),
+    ribbon,
 
     groups.length
       ? h('section', { 'aria-labelledby': 'ts-list-title' },
           h('h2', { id: 'ts-list-title', class: 'visually-hidden' }, 'Time entries'),
-          tsList(groups, day, isToday),
+          list,
           h('p', { class: 'ts-total' }, h('span', null, 'Total'), liveTotal(dayEntries, { class: 'ts-total-value' })),
         )
       : h('div', { class: 'ts-empty' },
@@ -291,7 +294,8 @@ function timesheetRow(group, day, isToday) {
     ),
   );
 
-  return h('li', { class: run ? 'ts-row running' : 'ts-row', style: { '--c': l.color }, 'data-key': key },
+  return h('li', { class: run ? 'ts-row running' : 'ts-row', style: { '--c': l.color }, 'data-key': key,
+    'data-entries': group.map((e) => e.id).join(' ') },
     h('button', { type: 'button', class: 'ts-open', id: `open-${first.id}`, 'aria-controls': moreId,
       'aria-label': `${name}${group.length > 1 ? `, ${group.length} time ranges` : ''}${run ? ', tracking now' : ''}` },
       h('span', { class: 'ts-project' }, h('span', { class: 'swatch', style: { '--swatch': l.color }, 'aria-hidden': 'true' }), l.project,
