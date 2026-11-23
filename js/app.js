@@ -10,6 +10,7 @@ import { formatSyncedAt, renderSettings } from './settings.js';
 import * as sync from './sync.js';
 import { loadDither } from './dither.js';
 import { expandList } from './expand.js';
+import { openSplitDialog } from './split-dialog.js';
 import { announce, confirmDialog, h, nameDialog, polyfillClosedBy } from './ui.js';
 
 const view = document.getElementById('view');
@@ -283,6 +284,8 @@ function timesheetRow(group, day, isToday) {
           h('span', { class: 'ts-range-actions' },
             h('button', { type: 'button', class: 'small', id: `edit-${e.id}`, onclick: () => openEntryDialog(e),
               'aria-label': `Edit ${range}` }, 'Edit'),
+            h('button', { type: 'button', class: 'small', onclick: () => openSplitDialog(e),
+              'aria-label': `Split ${range}` }, 'Split'),
             h('button', { type: 'button', class: 'small danger-text', onclick: () => deleteEntry(e),
               'aria-label': `Delete ${range}` }, 'Delete'),
           ),
@@ -398,6 +401,8 @@ function daySection(day, dayEntries, now) {
         h('div', { class: 'row-actions' },
           h('button', { type: 'button', class: 'small', id: `edit-${e.id}`, onclick: () => openEntryDialog(e),
             'aria-label': `Edit ${store.labelsOf(e).task} at ${timeOf(e.start)}` }, 'Edit'),
+          h('button', { type: 'button', class: 'small', onclick: () => openSplitDialog(e),
+            'aria-label': `Split ${store.labelsOf(e).task} at ${timeOf(e.start)}` }, 'Split'),
           h('button', { type: 'button', class: 'small danger-text', onclick: () => deleteEntry(e),
             'aria-label': `Delete ${store.labelsOf(e).task} at ${timeOf(e.start)}` }, 'Delete'),
         ),

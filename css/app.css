@@ -1228,3 +1228,44 @@
     .combo-opt[aria-selected="true"] { outline: 1px solid CanvasText; }
   }
 }
+
+/* Split dialog (js/split-dialog.js) */
+@layer components {
+  .split-bar {
+    display: flex;
+    gap: 2px;
+    block-size: 0.75rem;
+    margin-block: var(--space-2) var(--space-3);
+    border-radius: 999px;
+    overflow: hidden;
+    & > span { flex-basis: 0; min-inline-size: 3px; background: var(--c); }
+    @media (forced-colors: active) { & > span { background: CanvasText; } }
+  }
+  .split-parts {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .split-part {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-3) var(--space-3) calc(var(--space-3) + 4px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: inset 4px 0 0 var(--c);
+
+  }
+  .split-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+  }
+  .split-num { margin: 0; font-size: 1rem; }
+  .split-range { display: inline-flex; align-items: center; gap: var(--space-1); font-variant-numeric: tabular-nums; }
+  .split-cut { inline-size: auto; min-block-size: 2.25rem; padding-block: 0; }
+  .split-dur { margin-inline-start: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .split-add { justify-self: start; margin-block-start: var(--space-3); border-style: dashed; }
+}

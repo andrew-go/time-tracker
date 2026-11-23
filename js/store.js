@@ -158,6 +158,21 @@ export function saveEntry({ id, taskId, description = '', start, end }) {
 
 export const removeEntry = (id) => save('entries', { ...entry(id), deleted: true });
 
+/**
+ * Split one entry into consecutive parts: [{ taskId, description, start, end }].
+ * The original record becomes one of the parts (the running one if the timer is
+ * still going, otherwise the first), so sync sees an update plus new entries.
+ */
+export async function splitEntry(id, parts) {
+  const original = entry(id);
+  if (!original || parts.length < 2) return;
+  const keep = original.end == null ? parts.length - 1 : 0;
+  for (const [i, p] of parts.entries()) {
+    const base = i === keep ? original : { id: crypto.randomUUID() };
+    await save('entries', { ...base, taskId: p.taskId, description: p.description.trim(), start: p.start, end: p.end });
+  }
+}
+
 // ---- Snapshots, merge (sync and backup) ----------------------------------
 
 export const SNAPSHOT_FORMAT = 'time-tracker';

@@ -85,6 +85,22 @@
     </form>
   </dialog>
 
+  <!-- Split one entry into consecutive parts (js/split-dialog.js) -->
+  <dialog id="split-dialog" aria-labelledby="split-title" aria-describedby="split-summary">
+    <form method="dialog" id="split-form">
+      <h2 id="split-title">Split entry</h2>
+      <p id="split-summary" class="hint"></p>
+      <div id="split-bar" class="split-bar" aria-hidden="true"></div>
+      <ol id="split-parts" class="split-parts"></ol>
+      <button type="button" id="split-add" class="small split-add">+ Add a part</button>
+      <p id="split-hint" class="hint" role="status"></p>
+      <div class="actions">
+        <button value="cancel" formnovalidate>Cancel</button>
+        <button value="save" class="primary" id="split-save">Split</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Start a timer -->
   <dialog id="start-dialog" aria-labelledby="start-dialog-title">
     <form method="dialog" id="start-form">

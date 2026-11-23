@@ -17,6 +17,12 @@ const taskOptions = (projectInput) => () => {
   const p = projectByName(projectInput.value);
   return p ? store.tasks(p.id).map((t) => ({ label: t.name, color: p.color })) : [];
 };
+/** Spring pickers on a project + task input pair (the task list follows the project). */
+export function projectTaskPickers(project, task) {
+  springCombo(project, { options: projectOptions, label: 'projects' });
+  springCombo(task, { options: taskOptions(project), label: 'tasks' });
+}
+export { projectByName };
 const upgraded = new WeakSet();
 function pickers(form) {
   if (upgraded.has(form)) return;
