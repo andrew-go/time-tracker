@@ -7,11 +7,14 @@
 // Shapes:
 //   project { id, name, color, archived }
 //   task    { id, projectId, name, archived }
-//   entry   { id, taskId, description, start, end }   start/end = epoch ms, end null while running
+//   entry   { id, taskId, description, start, end, planId? }   start/end = epoch ms, end null while running
+//   plan    { id, taskId, description, day, time, estimate, done }
+//           day 'YYYY-MM-DD' or null (someday), time 'HH:MM' or null, estimate minutes or null,
+//           done epoch ms or null. Entries started from a plan carry its planId.
 
 import * as db from './db.js';
 
-const state = { projects: new Map(), tasks: new Map(), entries: new Map() };
+const state = { projects: new Map(), tasks: new Map(), entries: new Map(), plans: new Map() };
 export const events = new EventTarget();
 
 const channel = 'BroadcastChannel' in globalThis ? new BroadcastChannel('time-tracker') : null;
@@ -139,11 +142,13 @@ export const nameTaken = (list, name, exceptId) =>
 
 // ---- Time entries --------------------------------------------------------
 
-export async function startTimer({ taskId, description = '' }) {
+export async function startTimer({ taskId, description = '', planId = null }) {
   const now = Date.now();
   const current = running();
   if (current) await save('entries', { ...current, end: now });
-  return save('entries', { id: crypto.randomUUID(), taskId, description: description.trim(), start: now, end: null });
+  const rec = { id: crypto.randomUUID(), taskId, description: description.trim(), start: now, end: null };
+  if (planId) rec.planId = planId;
+  return save('entries', rec);
 }
 
 export async function stopTimer() {
@@ -157,6 +162,31 @@ export function saveEntry({ id, taskId, description = '', start, end }) {
 }
 
 export const removeEntry = (id) => save('entries', { ...entry(id), deleted: true });
+
+// ---- Planned tasks ----------------------------------------------------------
+
+export const plan = (id) => state.plans.get(id);
+
+/** Live plans, by day (someday last), then time, then when they were added. */
+export function plans() {
+  const key = (p) => `${p.day ?? '9999-99-99'} ${p.time ?? '99:99'}`;
+  return live(state.plans).toSorted((a, b) => key(a).localeCompare(key(b)) || (a.created ?? 0) - (b.created ?? 0));
+}
+
+export function savePlan({ id, taskId, description = '', day = null, time = null, estimate = null, done = null }) {
+  const base = id ? plan(id) : { id: crypto.randomUUID(), created: Date.now() };
+  return save('plans', { ...base, taskId, description: description.trim(), day, time, estimate, done });
+}
+
+export const setPlanDone = (id, done) => save('plans', { ...plan(id), done: done ? Date.now() : null });
+export const movePlan = (id, day) => save('plans', { ...plan(id), day });
+export const removePlan = (id) => save('plans', { ...plan(id), deleted: true });
+
+/** Time tracked for a plan: entries started from it, plus same-task entries on its day. */
+export function planEntries(p, dayOfEntry) {
+  return live(state.entries).filter((e) => e.planId === p.id
+    || (!e.planId && p.day && e.taskId === p.taskId && dayOfEntry(e.start) === p.day));
+}
 
 /**
  * Split one entry into consecutive parts: [{ taskId, description, start, end }].
@@ -201,8 +231,9 @@ export function alignByName(data) {
       taskIds.set(t.id, mine.id);
       return false;
     });
-  const entries = data.entries.map((e) => (taskIds.has(e.taskId) ? { ...e, taskId: taskIds.get(e.taskId) } : e));
-  return { ...data, projects, tasks, entries };
+  const remap = (r) => (taskIds.has(r.taskId) ? { ...r, taskId: taskIds.get(r.taskId) } : r);
+  const entries = data.entries.map(remap);
+  return { ...data, projects, tasks, entries, ...(data.plans ? { plans: data.plans.map(remap) } : {}) };
 }
 
 /** Everything, including tombstones, as one JSON-serializable object. */
@@ -220,6 +251,8 @@ const VALID = {
   projects: (r) => isRecord(r) && typeof r.name === 'string',
   tasks: (r) => isRecord(r) && typeof r.name === 'string' && typeof r.projectId === 'string',
   entries: (r) => isRecord(r) && typeof r.taskId === 'string' && Number.isFinite(r.start) && (r.end == null || Number.isFinite(r.end)),
+  plans: (r) => isRecord(r) && typeof r.taskId === 'string'
+    && (r.day == null || /^\d{4}-\d{2}-\d{2}$/.test(r.day)) && (r.time == null || /^\d{2}:\d{2}$/.test(r.time)),
 };
 
 /** Last write wins; ties broken deterministically so every device picks the same record. */
@@ -227,7 +260,8 @@ const wins = (a, b) =>
   a.updatedAt > b.updatedAt || (a.updatedAt === b.updatedAt && JSON.stringify(a) > JSON.stringify(b));
 
 export function isSnapshot(data) {
-  return data?.format === SNAPSHOT_FORMAT && db.STORES.every((name) => Array.isArray(data[name]));
+  return data?.format === SNAPSHOT_FORMAT && db.CORE_STORES.every((name) => Array.isArray(data[name]))
+    && db.STORES.every((name) => data[name] == null || Array.isArray(data[name]));
 }
 
 /**
@@ -242,7 +276,7 @@ export async function mergeSnapshot(other) {
   let otherBehind = false;
 
   for (const name of db.STORES) {
-    const theirs = new Map(other[name].filter(VALID[name]).map((r) => [r.id, r]));
+    const theirs = new Map((other[name] ?? []).filter(VALID[name]).map((r) => [r.id, r]));
     const incoming = [];
     for (const r of theirs.values()) {
       const mine = state[name].get(r.id);
@@ -283,4 +317,5 @@ export const counts = () => ({
   projects: live(state.projects).length,
   tasks: live(state.tasks).length,
   entries: live(state.entries).length,
+  plans: live(state.plans).length,
 });

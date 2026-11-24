@@ -8,7 +8,7 @@
 //
 // Bump VERSION on every deploy that changes app files, and keep SHELL in sync
 // with the files the app loads.
-const VERSION = 'v18';
+const VERSION = 'v19';
 const CACHE = `time-tracker-${VERSION}`;
 const SHELL = [
   './',
@@ -24,6 +24,7 @@ const SHELL = [
   'js/combo.js',
   'js/expand.js',
   'js/split-dialog.js',
+  'js/plan.js',
   'js/reports.js',
   'js/export.js',
   'js/config.js',
@@ -82,5 +83,19 @@ self.addEventListener('fetch', (event) => {
       ? await cache.match('./')
       : await cache.match(request, { ignoreSearch: true });
     return cached ?? fetch(request);
+  })());
+});
+
+// Tapping a planned-task reminder: bring the app forward on the Plan tab.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const client = all[0];
+    if (client) {
+      await client.focus();
+      return client.navigate ? client.navigate(new URL('./#/plan', self.registration.scope).href).catch(() => {}) : undefined;
+    }
+    return self.clients.openWindow(new URL('./#/plan', self.registration.scope).href);
   })());
 });

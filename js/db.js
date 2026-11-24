@@ -2,8 +2,10 @@
 // plus a key/value "meta" store for settings and sync state.
 
 const DB_NAME = 'time-tracker';
-const DB_VERSION = 1;
-export const STORES = ['projects', 'tasks', 'entries'];
+const DB_VERSION = 2; // 2: planned tasks
+export const STORES = ['projects', 'tasks', 'entries', 'plans'];
+/** Stores every snapshot must have; newer ones are optional so older backups still load. */
+export const CORE_STORES = ['projects', 'tasks', 'entries'];
 
 let dbPromise;
 
@@ -17,7 +19,11 @@ function open() {
       }
       if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      // A newer version of the app opened in another tab: let it upgrade, then reload.
+      req.result.onversionchange = () => { req.result.close(); location.reload(); };
+      resolve(req.result);
+    };
     req.onerror = () => reject(new Error('Could not open the database', { cause: req.error }));
   });
   return dbPromise;

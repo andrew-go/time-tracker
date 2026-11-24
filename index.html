@@ -35,11 +35,15 @@
   <nav class="app-nav" aria-label="Main">
     <ul>
       <li><a href="#/track" data-route="track">Track</a></li>
+      <li><a href="#/plan" data-route="plan">Plan<span class="nav-badge" id="plan-badge" hidden></span></a></li>
       <li><a href="#/entries" data-route="entries">Entries</a></li>
       <li><a href="#/projects" data-route="projects">Projects</a></li>
       <li><a href="#/reports" data-route="reports">Reports</a></li>
     </ul>
   </nav>
+
+  <!-- Reminders for planned tasks (js/plan.js) -->
+  <div id="reminder" class="reminder" role="status" hidden></div>
 
   <main id="view" tabindex="-1">
     <p class="loading">Loading…</p>
@@ -97,6 +101,50 @@
       <div class="actions">
         <button value="cancel" formnovalidate>Cancel</button>
         <button value="save" class="primary" id="split-save">Split</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Add or edit a planned task (js/plan.js) -->
+  <dialog id="plan-dialog" aria-labelledby="plan-title">
+    <form method="dialog" id="plan-form">
+      <h2 id="plan-title">Plan a task</h2>
+      <div class="field">
+        <label for="pf-project">Project <span class="req" aria-hidden="true">*</span></label>
+        <input id="pf-project" name="project" required autocomplete="off" enterkeyhint="next">
+      </div>
+      <div class="field">
+        <label for="pf-task">Task <span class="req" aria-hidden="true">*</span></label>
+        <input id="pf-task" name="task" required autocomplete="off" enterkeyhint="next">
+      </div>
+      <div class="field">
+        <label for="pf-description">Description</label>
+        <input id="pf-description" name="description" autocomplete="off">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="pf-day">Day</label>
+          <input id="pf-day" name="day" type="date" aria-describedby="pf-day-hint">
+        </div>
+        <div class="field">
+          <label for="pf-time">Time</label>
+          <input id="pf-time" name="time" type="time" aria-describedby="pf-time-hint">
+        </div>
+        <div class="field">
+          <label for="pf-estimate">Estimate</label>
+          <select id="pf-estimate" name="estimate">
+            <option value="">None</option>
+            <option value="15">15 min</option><option value="30">30 min</option><option value="45">45 min</option>
+            <option value="60">1 h</option><option value="90">1 h 30</option><option value="120">2 h</option>
+            <option value="180">3 h</option><option value="240">4 h</option><option value="360">6 h</option><option value="480">8 h</option>
+          </select>
+        </div>
+      </div>
+      <p class="hint"><span id="pf-day-hint">No day: it goes to Someday.</span> <span id="pf-time-hint">With a time you get a reminder 5 minutes before.</span></p>
+      <div class="actions">
+        <button value="delete" formnovalidate class="danger-text" id="pf-delete">Delete</button>
+        <button value="cancel" formnovalidate>Cancel</button>
+        <button value="save" class="primary">Save</button>
       </div>
     </form>
   </dialog>

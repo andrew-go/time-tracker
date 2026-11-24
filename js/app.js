@@ -11,13 +11,14 @@ import * as sync from './sync.js';
 import { loadDither } from './dither.js';
 import { expandList } from './expand.js';
 import { openSplitDialog } from './split-dialog.js';
+import { checkReminders, overdueCount, renderPlan } from './plan.js';
 import { announce, confirmDialog, h, nameDialog, polyfillClosedBy } from './ui.js';
 
 const view = document.getElementById('view');
 
 // ---- Routing -------------------------------------------------------------
 
-const routes = { track: renderTrack, entries: renderEntries, projects: renderProjects, reports: renderReports, settings: renderSettings };
+const routes = { track: renderTrack, plan: renderPlan, entries: renderEntries, projects: renderProjects, reports: renderReports, settings: renderSettings };
 
 function parseHash() {
   const [path = '', query = ''] = location.hash.replace(/^#\/?/, '').split('?');
@@ -32,6 +33,11 @@ function render() {
     else a.removeAttribute('aria-current');
   }
   view.replaceChildren(routes[route.name](route.params));
+  const late = overdueCount();
+  const badge = document.getElementById('plan-badge');
+  badge.hidden = !late;
+  badge.textContent = late ? String(late) : '';
+  badge.title = late ? `${late} overdue` : '';
   // Move focus into the new view only on navigation, not on data refreshes.
   if (lastRoute !== undefined && lastRoute !== route.name) {
     // Start the new view at the top (focus alone would scroll its heading under the sticky nav).
@@ -82,6 +88,7 @@ function tick() {
     }
   }
   updateRibbons(now);
+  checkReminders(now);
   const r = store.running();
   document.title = r ? `${formatClock(now - r.start)} · ${store.labelsOf(r).task}` : 'Time Tracker';
 }
