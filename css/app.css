@@ -925,7 +925,36 @@
     color: var(--text-muted);
   }
 
-  .recent h2 { color: var(--text-muted); font-size: 0.875rem; font-weight: 500; margin-block-end: var(--space-2); }
+  .recent > summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-block-size: var(--tap);
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    list-style: none;
+    &::-webkit-details-marker { display: none; }
+    &::before {
+      content: "";
+      inline-size: 0.5rem;
+      block-size: 0.5rem;
+      border-inline-end: 2px solid currentColor;
+      border-block-end: 2px solid currentColor;
+      rotate: -45deg;
+      @media (prefers-reduced-motion: no-preference) { transition: rotate 160ms ease-out; }
+    }
+    &:hover { color: var(--text); }
+  }
+  .recent[open] > summary { margin-block-end: var(--space-2); &::before { rotate: 45deg; } }
+  .recent-count {
+    padding-inline: 0.4rem;
+    border-radius: 999px;
+    background: var(--surface-2);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
 
   .actions.split { justify-content: space-between; align-items: center; }
   button.text-btn {

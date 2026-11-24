@@ -324,8 +324,12 @@ function startAgain(groups, running) {
   const onSheet = new Set(groups.map((g) => `${g[0].taskId}\u0000${g[0].description ?? ''}`));
   const combos = store.recentCombos(12).filter((c) => !onSheet.has(`${c.taskId}\u0000${c.description}`)).slice(0, 5);
   if (!combos.length) return null;
-  return h('section', { class: 'recent', 'aria-labelledby': 'recent-title' },
-    h('h2', { id: 'recent-title' }, 'Start again'),
+  // Folds away; the choice is remembered on this device (closed by default).
+  let open = false;
+  try { open = localStorage.getItem('tt-start-again') === 'open'; } catch { /* private mode */ }
+  const box = h('details', { class: 'recent', open,
+    ontoggle: (e) => { try { localStorage.setItem('tt-start-again', e.target.open ? 'open' : 'closed'); } catch { /* ignore */ } } },
+    h('summary', null, h('span', { class: 'recent-title' }, 'Start again'), h('span', { class: 'recent-count' }, String(combos.length))),
     h('ul', { class: 'ts-list quiet' }, combos.map((c) => {
       const l = store.labelsOf({ taskId: c.taskId });
       const name = `${l.task}${c.description ? `, ${c.description}` : ''}`;
@@ -341,6 +345,7 @@ function startAgain(groups, running) {
       );
     })),
   );
+  return box;
 }
 
 // ---- Entries view --------------------------------------------------------
