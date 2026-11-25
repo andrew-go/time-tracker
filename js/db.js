@@ -2,8 +2,8 @@
 // plus a key/value "meta" store for settings and sync state.
 
 const DB_NAME = 'time-tracker';
-const DB_VERSION = 2; // 2: planned tasks
-export const STORES = ['projects', 'tasks', 'entries', 'plans'];
+const DB_VERSION = 3; // 2: planned tasks, 3: days off
+export const STORES = ['projects', 'tasks', 'entries', 'plans', 'daysoff'];
 /** Stores every snapshot must have; newer ones are optional so older backups still load. */
 export const CORE_STORES = ['projects', 'tasks', 'entries'];
 

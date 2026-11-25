@@ -13,13 +13,14 @@ import { expandList } from './expand.js';
 import { openSplitDialog } from './split-dialog.js';
 import { checkReminders, overdueCount, renderPlan } from './plan.js';
 import { copyStatus } from './status.js';
+import { renderDaysOff, TYPE_LABEL, TYPE_SHORT } from './daysoff.js';
 import { announce, confirmDialog, h, nameDialog, polyfillClosedBy } from './ui.js';
 
 const view = document.getElementById('view');
 
 // ---- Routing -------------------------------------------------------------
 
-const routes = { track: renderTrack, plan: renderPlan, entries: renderEntries, projects: renderProjects, reports: renderReports, settings: renderSettings };
+const routes = { track: renderTrack, plan: renderPlan, entries: renderEntries, projects: renderProjects, reports: renderReports, settings: renderSettings, 'days-off': renderDaysOff };
 
 function parseHash() {
   const [path = '', query = ''] = location.hash.replace(/^#\/?/, '').split('?');
@@ -219,7 +220,11 @@ function renderTrack(params) {
           },
             h('span', { class: 'ws-letter', 'aria-hidden': 'true' }, weekdayLetter(d)),
             h('span', { class: 'visually-hidden' }, `${weekdayLong(d)}${d.equals(today()) ? ' (today)' : ''}: `),
-            liveTotal(list, { class: 'ws-total' }),
+            // A day off with nothing tracked shows its kind instead of 0:00.
+            !list.length && store.dayOff(d.toString())
+              ? h('span', { class: `ws-total ws-off is-${store.dayOff(d.toString()).type}` }, TYPE_SHORT[store.dayOff(d.toString()).type],
+                h('span', { class: 'visually-hidden' }, ` (${TYPE_LABEL[store.dayOff(d.toString()).type]})`))
+              : liveTotal(list, { class: 'ws-total' }),
           ));
       })),
       h('a', { class: 'button icon-btn ghost', href: dayLink(day.add({ weeks: 1 })), 'aria-label': 'Next week' },
@@ -227,6 +232,8 @@ function renderTrack(params) {
     ),
 
     ribbon,
+
+    dayOffNote(day),
 
     groups.length
       ? h('section', { 'aria-labelledby': 'ts-list-title' },
@@ -246,6 +253,17 @@ function renderTrack(params) {
     !isToday ? h('p', null, h('a', { href: '#/track' }, 'Back to today')) : null,
     isToday ? startAgain(groups, running) : null,
   );
+}
+
+/** "Vacation · note" under the ribbon on a day marked off, with a link to the calendar. */
+function dayOffNote(day) {
+  const off = store.dayOff(day.toString());
+  if (!off) return null;
+  return h('p', { class: `day-off-note is-${off.type}` },
+    h('i', { 'aria-hidden': 'true' }),
+    h('strong', null, TYPE_LABEL[off.type]),
+    off.note ? h('span', null, ` · ${off.note}`) : null,
+    h('a', { href: `#/days-off?month=${day.toPlainYearMonth()}` }, 'Days off'));
 }
 
 /** Two overlapping sheets: the usual "copy" icon. */

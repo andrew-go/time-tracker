@@ -11,10 +11,12 @@
 //   plan    { id, taskId, description, day, time, estimate, done }
 //           day 'YYYY-MM-DD' or null (someday), time 'HH:MM' or null, estimate minutes or null,
 //           done epoch ms or null. Entries started from a plan carry its planId.
+//   dayoff  { id, day, type, note }   id === day ('YYYY-MM-DD'), so two devices
+//           marking the same day merge into one record. type: vacation | sick | holiday.
 
 import * as db from './db.js';
 
-const state = { projects: new Map(), tasks: new Map(), entries: new Map(), plans: new Map() };
+const state = { projects: new Map(), tasks: new Map(), entries: new Map(), plans: new Map(), daysoff: new Map() };
 export const events = new EventTarget();
 
 const channel = 'BroadcastChannel' in globalThis ? new BroadcastChannel('time-tracker') : null;
@@ -163,6 +165,22 @@ export function saveEntry({ id, taskId, description = '', start, end }) {
 
 export const removeEntry = (id) => save('entries', { ...entry(id), deleted: true });
 
+// ---- Days off ---------------------------------------------------------------
+
+export const DAY_OFF_TYPES = ['vacation', 'sick', 'holiday'];
+/** The day-off record for 'YYYY-MM-DD', or undefined. */
+export const dayOff = (day) => { const r = state.daysoff.get(day); return r && !r.deleted ? r : undefined; };
+export const daysOff = () => live(state.daysoff).toSorted((a, b) => a.day.localeCompare(b.day));
+
+/** Mark (or, with type null, unmark) a set of days in one go. */
+export async function setDaysOff(days, type, note = '') {
+  for (const day of days) {
+    const cur = state.daysoff.get(day);
+    if (type) await save('daysoff', { ...(cur ?? {}), id: day, day, type, note: note.trim(), deleted: false });
+    else if (cur && !cur.deleted) await save('daysoff', { ...cur, deleted: true });
+  }
+}
+
 // ---- Planned tasks ----------------------------------------------------------
 
 export const plan = (id) => state.plans.get(id);
@@ -251,6 +269,8 @@ const VALID = {
   projects: (r) => isRecord(r) && typeof r.name === 'string',
   tasks: (r) => isRecord(r) && typeof r.name === 'string' && typeof r.projectId === 'string',
   entries: (r) => isRecord(r) && typeof r.taskId === 'string' && Number.isFinite(r.start) && (r.end == null || Number.isFinite(r.end)),
+  daysoff: (r) => isRecord(r) && typeof r.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.day)
+    && r.id === r.day && (r.deleted || ['vacation', 'sick', 'holiday'].includes(r.type)),
   plans: (r) => isRecord(r) && typeof r.taskId === 'string'
     && (r.day == null || /^\d{4}-\d{2}-\d{2}$/.test(r.day)) && (r.time == null || /^\d{2}:\d{2}$/.test(r.time)),
 };
@@ -318,4 +338,5 @@ export const counts = () => ({
   tasks: live(state.tasks).length,
   entries: live(state.entries).length,
   plans: live(state.plans).length,
+  daysoff: live(state.daysoff).length,
 });

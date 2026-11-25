@@ -15,6 +15,10 @@ export function formatSyncedAt(ms) {
 export function renderSettings() {
   return h('div', { class: 'stack' },
     h('h1', { class: 'view-title' }, 'Settings'),
+    h('section', { class: 'card stack-sm', 'aria-labelledby': 'daysoff-title' },
+      h('h2', { id: 'daysoff-title' }, 'Days off'),
+      h('p', { class: 'hint' }, 'Mark vacations, sick leave and holidays in a calendar. Only for your history; reports don’t change.'),
+      h('a', { href: '#/days-off', class: 'button' }, 'Open days off calendar')),
     syncSection(),
     backupSection(),
     storageSection(),
