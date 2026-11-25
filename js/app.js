@@ -234,8 +234,8 @@ function renderTrack(params) {
           list,
           h('div', { class: 'ts-total' },
             h('span', null, 'Total'),
-            h('button', { type: 'button', class: 'small copy-status', onclick: () => copyStatus(day, groups) },
-              'Copy for status'),
+            h('button', { type: 'button', class: 'icon-btn ghost copy-status', 'aria-label': 'Copy for status',
+              title: 'Copy for status', onclick: () => copyStatus(day, groups) }, copyIcon()),
             liveTotal(dayEntries, { class: 'ts-total-value' })),
         )
       : h('div', { class: 'ts-empty' },
@@ -246,6 +246,21 @@ function renderTrack(params) {
     !isToday ? h('p', null, h('a', { href: '#/track' }, 'Back to today')) : null,
     isToday ? startAgain(groups, running) : null,
   );
+}
+
+/** Two overlapping sheets: the usual "copy" icon. */
+function copyIcon() {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', 'copy-icon');
+  for (const d of ['M9 9h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V10a1 1 0 0 1 1-1z', 'M16 9V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3']) {
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', d);
+    svg.append(path);
+  }
+  return svg;
 }
 
 // Which timesheet row is open, so it stays open when the view re-renders.
@@ -316,7 +331,7 @@ function timesheetRow(group, day, isToday) {
       h('span', { class: 'ts-project' }, h('span', { class: 'swatch', style: { '--swatch': l.color }, 'aria-hidden': 'true' }), l.project,
         run ? trackingBadge() : null),
       h('span', { class: 'ts-task' }, l.task),
-      desc ? h('span', { class: 'ts-desc' }, desc) : null,
+      desc ? h('span', { class: 'ts-desc', title: desc }, desc) : null,
     ),
     liveTotal(group, { class: 'ts-dur' }, { ticking: true }),
     toggle,
@@ -342,7 +357,7 @@ function startAgain(groups, running) {
         h('div', { class: 'ts-open static' },
           h('span', { class: 'ts-project' }, h('span', { class: 'swatch', style: { '--swatch': l.color }, 'aria-hidden': 'true' }), l.project),
           h('span', { class: 'ts-task' }, l.task),
-          c.description ? h('span', { class: 'ts-desc' }, c.description) : null,
+          c.description ? h('span', { class: 'ts-desc', title: c.description }, c.description) : null,
         ),
         h('button', { type: 'button', class: 'ts-toggle', 'aria-label': `Start ${name}`, disabled: running?.taskId === c.taskId && (running.description ?? '') === c.description,
           onclick: async () => { await store.startTimer(c); announce(`Started ${l.task}`); } },

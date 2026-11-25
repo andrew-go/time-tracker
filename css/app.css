@@ -823,7 +823,18 @@
   }
   .ts-project { display: inline-flex; align-items: center; color: var(--text-muted); font-size: 0.875rem; }
   .ts-task { font-weight: 600; font-size: 1.0625rem; line-height: 1.3; overflow-wrap: anywhere; }
-  .ts-desc { font-size: 0.9375rem; overflow-wrap: anywhere; }
+  /* Long descriptions: two lines, then "…"; the open card shows it in full. */
+  .ts-desc {
+    font-size: 0.9375rem;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    max-inline-size: 40ch;
+    .ts-row[data-open] & { display: block; -webkit-line-clamp: unset; line-clamp: unset; max-inline-size: none; }
+  }
 
   /* "Tracking now" cues: a labelled badge (always), plus gentle motion when the
      user hasn't asked for reduced motion: the badge dot breathes, the colon in
@@ -914,7 +925,8 @@
     margin: 0;
     padding: var(--space-3) var(--space-4) 0;
     color: var(--text-muted);
-    & .copy-status { margin-inline-start: auto; }
+    & .copy-status { margin-inline-start: auto; color: var(--text-muted); &:hover:not(:disabled) { color: var(--text); } }
+    & .copy-icon { inline-size: 1.25rem; block-size: 1.25rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
   }
   .status-text { inline-size: 100%; box-sizing: border-box; font: inherit; font-size: 0.875rem; }
   .ts-total-value { font-family: var(--font-display); font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
