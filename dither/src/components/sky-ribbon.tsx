@@ -16,7 +16,17 @@ import type { DitherShaderProps } from "@/lib/dither";
  *   follows light and dark.
  */
 const SKY = `
-float skyHour(vec2 uv) { return uv.x * 24.0; }
+// The sky below is drawn for a reference day: sunrise 6:36, noon 12:43, sunset
+// 18:51. skyHour() maps the real clock hour onto it, so this date's sunrise,
+// solar noon and sunset (skyRise, skySet, from the app) land where they belong.
+float skyHour(vec2 uv) {
+  float h = uv.x * 24.0;
+  float noon = 0.5 * (skyRise + skySet);
+  if (h < skyRise) return h * 6.6 / skyRise;
+  if (h < noon) return 6.6 + (h - skyRise) * (12.725 - 6.6) / (noon - skyRise);
+  if (h < skySet) return 12.725 + (h - noon) * (18.85 - 12.725) / (skySet - noon);
+  return 18.85 + (h - skySet) * (24.0 - 18.85) / (24.0 - skySet);
+}
 
 // 0 at night, 1 at noon.
 float skyLight(float h) {
@@ -71,11 +81,14 @@ export type SkyRibbonProps = Omit<
 > & {
   /** Current time as a fraction of the day (0 to 1), or -1 when the day isn't today. */
   now?: number;
+  /** Sunrise and sunset, in clock hours, for the day shown. */
+  rise?: number;
+  set?: number;
   /** Whether the page is in dark mode (flips which part of the sky is dense). */
   dark?: boolean;
 };
 
-export const SkyRibbon = ({ now = -1, dark = false, matrix = "bayer4", ...props }: SkyRibbonProps) => (
+export const SkyRibbon = ({ now = -1, rise = 6.6, set = 18.85, dark = false, matrix = "bayer4", ...props }: SkyRibbonProps) => (
   <DitherShader
     {...props}
     field={FIELD}
@@ -88,7 +101,7 @@ export const SkyRibbon = ({ now = -1, dark = false, matrix = "bayer4", ...props 
     speed={1}
     fps={24}
     stillTime={4}
-    uniforms={{ skyNow: now, skyDark: dark ? 1 : 0 }}
+    uniforms={{ skyNow: now, skyRise: rise, skySet: set, skyDark: dark ? 1 : 0 }}
     // Until the first frame (or without WebGL) the ribbon's CSS gradient shows.
     fallback={null}
   />

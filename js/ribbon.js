@@ -14,6 +14,25 @@ const pct = (x) => `${(Math.min(1, Math.max(0, x)) * 100).toFixed(3)}%`;
 
 // The sky itself is drawn by the dither island (<sky-dither>), loaded on first
 // use. Until it draws, or if it can't load, the CSS gradient shows.
+/**
+ * Sunrise and sunset for `day` as fractions of the day, so the sky's light
+ * follows the season instead of a fixed 6:36–18:51. We don't know where you
+ * are, so this assumes a northern mid-latitude (50°N, central Europe) and puts
+ * solar noon at 12:00 standard time (13:00 under daylight saving time).
+ */
+export function daylight(day) {
+  const rad = Math.PI / 180;
+  const decl = -23.44 * rad * Math.cos(((2 * Math.PI) / 365) * (day.dayOfYear + 10));
+  const lat = 50 * rad;
+  const cosH = (Math.sin(-0.833 * rad) - Math.sin(lat) * Math.sin(decl)) / (Math.cos(lat) * Math.cos(decl));
+  const half = Math.acos(Math.min(1, Math.max(-1, cosH))) / rad / 15; // hours from noon
+  const tz = Temporal.Now.timeZoneId();
+  const offset = (d) => d.toZonedDateTime({ timeZone: tz, plainTime: '12:00' }).offsetNanoseconds / 3.6e12;
+  const standard = Math.min(offset(day.with({ month: 1, day: 1 })), offset(day.with({ month: 7, day: 1 })));
+  const noon = 12 + (offset(day) - standard);
+  return { rise: (noon - half) / 24, set: (noon + half) / 24 };
+}
+
 const nowAttr = (fraction) => (fraction >= 0 && fraction <= 1 ? fraction.toFixed(4) : '-1');
 
 /**
@@ -52,9 +71,12 @@ export function dayRibbon(day, entries, { size = 'large', cell = 3 } = {}) {
     : `${isToday ? 'Today' : 'Day'}: nothing tracked yet`;
 
   loadDither();
+  const sun = daylight(day);
   return h('div', { class: `ribbon ${size}`, 'data-start': start, 'data-span': span },
-    h('div', { class: 'sky', role: 'img', 'aria-label': summary },
-      h('sky-dither', { now: isToday ? nowAttr((now - start) / span) : '-1', cell }),
+    h('div', { class: 'sky', role: 'img', 'aria-label': summary,
+      style: { '--sun-rise': pct(sun.rise), '--sun-noon': pct((sun.rise + sun.set) / 2), '--sun-set': pct(sun.set) } },
+      h('sky-dither', { now: isToday ? nowAttr((now - start) / span) : '-1', cell,
+        rise: sun.rise.toFixed(4), set: sun.set.toFixed(4) }),
       blocks,
       isToday ? h('span', { class: 'now', style: { '--l': pct((now - start) / span) } }) : null,
     ),

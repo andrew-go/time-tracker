@@ -24,7 +24,7 @@ syncDarkClass();
 darkQuery.addEventListener("change", syncDarkClass);
 
 class SkyDither extends HTMLElement {
-  static observedAttributes = ["now", "cell"];
+  static observedAttributes = ["now", "cell", "rise", "set"];
   #root: Root | null = null;
   #onTheme = () => this.#render();
 
@@ -50,11 +50,17 @@ class SkyDither extends HTMLElement {
     if (!this.#root) return;
     const now = Number(this.getAttribute("now") ?? "-1");
     const cell = Number(this.getAttribute("cell") ?? "3");
+    // Sunrise and sunset as fractions of the day (the app computes them per date).
+    const rise = Number(this.getAttribute("rise") ?? "0.275");
+    const set = Number(this.getAttribute("set") ?? "0.785");
+    const ok = Number.isFinite(rise) && Number.isFinite(set) && rise > 0.02 && set < 0.98 && set - rise > 0.1;
     this.#root.render(
       <SkyRibbon
         className="absolute inset-0"
         now={Number.isFinite(now) ? now : -1}
         cell={Number.isFinite(cell) && cell > 0 ? cell : 3}
+        rise={ok ? rise * 24 : 6.6}
+        set={ok ? set * 24 : 18.85}
         dark={darkQuery.matches}
       />,
     );
