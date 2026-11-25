@@ -53,7 +53,7 @@ class SkyDither extends HTMLElement {
     // Sunrise and sunset as fractions of the day (the app computes them per date).
     const rise = Number(this.getAttribute("rise") ?? "0.275");
     const set = Number(this.getAttribute("set") ?? "0.785");
-    // The clock hours the strip shows (7–20 unless entries need more).
+    // The clock hours the strip shows (daylight ± ~1¼ h, wider if entries need it).
     let from = Number(this.getAttribute("from") ?? "0");
     let to = Number(this.getAttribute("to") ?? "24");
     if (!(Number.isFinite(from) && Number.isFinite(to) && from >= 0 && to <= 24 && to - from >= 1)) { from = 0; to = 24; }
