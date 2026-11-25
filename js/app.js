@@ -12,6 +12,7 @@ import { loadDither } from './dither.js';
 import { expandList } from './expand.js';
 import { openSplitDialog } from './split-dialog.js';
 import { checkReminders, overdueCount, renderPlan } from './plan.js';
+import { copyStatus } from './status.js';
 import { announce, confirmDialog, h, nameDialog, polyfillClosedBy } from './ui.js';
 
 const view = document.getElementById('view');
@@ -231,7 +232,11 @@ function renderTrack(params) {
       ? h('section', { 'aria-labelledby': 'ts-list-title' },
           h('h2', { id: 'ts-list-title', class: 'visually-hidden' }, 'Time entries'),
           list,
-          h('p', { class: 'ts-total' }, h('span', null, 'Total'), liveTotal(dayEntries, { class: 'ts-total-value' })),
+          h('div', { class: 'ts-total' },
+            h('span', null, 'Total'),
+            h('button', { type: 'button', class: 'small copy-status', onclick: () => copyStatus(day, groups) },
+              'Copy for status'),
+            liveTotal(dayEntries, { class: 'ts-total-value' })),
         )
       : h('div', { class: 'ts-empty' },
           h('p', null, isToday ? 'Nothing tracked yet today.' : 'Nothing tracked on this day.'),
