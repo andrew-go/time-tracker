@@ -589,6 +589,8 @@ async function main() {
   setInterval(tick, 1000);
   // A new day can start while the app is open in the background.
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+  // The day ribbon widens past 22:00 (or before 6:00) as time goes on.
+  document.addEventListener('ribbon-outgrown', () => queueMicrotask(refresh));
 
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('sw.js');

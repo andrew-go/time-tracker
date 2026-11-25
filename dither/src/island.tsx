@@ -24,7 +24,7 @@ syncDarkClass();
 darkQuery.addEventListener("change", syncDarkClass);
 
 class SkyDither extends HTMLElement {
-  static observedAttributes = ["now", "cell", "rise", "set"];
+  static observedAttributes = ["now", "cell", "rise", "set", "from", "to"];
   #root: Root | null = null;
   #onTheme = () => this.#render();
 
@@ -53,6 +53,10 @@ class SkyDither extends HTMLElement {
     // Sunrise and sunset as fractions of the day (the app computes them per date).
     const rise = Number(this.getAttribute("rise") ?? "0.275");
     const set = Number(this.getAttribute("set") ?? "0.785");
+    // The clock hours the strip shows (7–20 unless entries need more).
+    let from = Number(this.getAttribute("from") ?? "0");
+    let to = Number(this.getAttribute("to") ?? "24");
+    if (!(Number.isFinite(from) && Number.isFinite(to) && from >= 0 && to <= 24 && to - from >= 1)) { from = 0; to = 24; }
     const ok = Number.isFinite(rise) && Number.isFinite(set) && rise > 0.02 && set < 0.98 && set - rise > 0.1;
     this.#root.render(
       <SkyRibbon
@@ -61,6 +65,8 @@ class SkyDither extends HTMLElement {
         cell={Number.isFinite(cell) && cell > 0 ? cell : 3}
         rise={ok ? rise * 24 : 6.6}
         set={ok ? set * 24 : 18.85}
+        from={from}
+        to={to}
         dark={darkQuery.matches}
       />,
     );

@@ -25,7 +25,7 @@ float seg(float h, float a, float b, float ra, float rb) {
   return ra + (rb - ra) * clamp((h - a) / max(b - a, 0.01), 0.0, 1.0);
 }
 float skyHour(vec2 uv) {
-  float h = uv.x * 24.0;
+  float h = mix(skyFrom, skyTo, uv.x); // the strip shows skyFrom–skyTo o'clock
   float noon = 0.5 * (skyRise + skySet);
   float d0 = max(skyRise - 1.2, 0.5), d1 = skyRise + 1.5;
   float k0 = skySet - 1.5, k1 = min(skySet + 1.2, 23.5);
@@ -90,6 +90,9 @@ export type SkyRibbonProps = Omit<
 > & {
   /** Current time as a fraction of the day (0 to 1), or -1 when the day isn't today. */
   now?: number;
+  /** The clock hours the strip spans (default the whole day). */
+  from?: number;
+  to?: number;
   /** Sunrise and sunset, in clock hours, for the day shown. */
   rise?: number;
   set?: number;
@@ -97,7 +100,7 @@ export type SkyRibbonProps = Omit<
   dark?: boolean;
 };
 
-export const SkyRibbon = ({ now = -1, rise = 6.6, set = 18.85, dark = false, matrix = "bayer4", ...props }: SkyRibbonProps) => (
+export const SkyRibbon = ({ now = -1, from = 0, to = 24, rise = 6.6, set = 18.85, dark = false, matrix = "bayer4", ...props }: SkyRibbonProps) => (
   <DitherShader
     {...props}
     field={FIELD}
@@ -110,7 +113,7 @@ export const SkyRibbon = ({ now = -1, rise = 6.6, set = 18.85, dark = false, mat
     speed={1}
     fps={24}
     stillTime={4}
-    uniforms={{ skyNow: now, skyRise: rise, skySet: set, skyDark: dark ? 1 : 0 }}
+    uniforms={{ skyNow: now, skyFrom: from, skyTo: to, skyRise: rise, skySet: set, skyDark: dark ? 1 : 0 }}
     // Until the first frame (or without WebGL) the ribbon's CSS gradient shows.
     fallback={null}
   />

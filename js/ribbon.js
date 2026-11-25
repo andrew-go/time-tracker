@@ -1,12 +1,13 @@
-// The day ribbon: a 24-hour strip shaded from night through dawn, day and dusk,
-// with time entries drawn as blocks in their project color.
+// The day ribbon: a strip shaded from night through dawn, day and dusk, with
+// time entries drawn as blocks in their project color.
 //
-// Positions are fractions of the real local day (start of day → start of next
-// day), so DST days of 23 or 25 hours still line up. The running block and the
+// It shows 07:00–20:00 by default and widens to whole hours to fit anything
+// tracked earlier or later (and "now"), so little of it is spent on night.
+// Positions are fractions of that real span of time, so DST days still line up. The running block and the
 // "now" marker are updated by `updateRibbons()` on each clock tick.
 
 import * as store from './store.js';
-import { formatTotal, startOfDay, timeOf, today } from './time.js';
+import { formatTotal, startOfDay, timeOf, toMs, today, zoned } from './time.js';
 import { h } from './ui.js';
 import { loadDither } from './dither.js';
 
@@ -33,6 +34,33 @@ export function daylight(day) {
   return { rise: (noon - half) / 24, set: (noon + half) / 24 };
 }
 
+const FROM = 7, TO = 20; // default window, clock hours
+
+/** The clock-hour window to show for `day`: 7–20, widened to whole hours to fit entries and now. */
+function windowFor(day, entries, now, isToday) {
+  const dayStart = startOfDay(day);
+  const dayEnd = startOfDay(day.add({ days: 1 }));
+  const hourOf = (ms) => { const z = zoned(ms); return z.hour + z.minute / 60 + z.second / 3600; };
+  let from = FROM, to = TO;
+  for (const e of entries) {
+    const a = Math.max(e.start, dayStart), b = Math.min(e.end ?? now, dayEnd);
+    if (b <= a) continue;
+    from = Math.min(from, Math.floor(hourOf(a)));
+    to = Math.max(to, b >= dayEnd ? 24 : Math.ceil(hourOf(b)));
+  }
+  if (isToday) {
+    from = Math.min(from, Math.floor(hourOf(now)));
+    to = Math.max(to, Math.min(24, Math.floor(hourOf(now)) + 1));
+  }
+  const at = (hr) => (hr >= 24 ? dayEnd : hr <= 0 ? dayStart : toMs(day.toString(), `${String(hr).padStart(2, '0')}:00`));
+  return { from, to, start: at(from), end: at(to) };
+}
+
+const hourLabel = (hr) => {
+  const m = Math.round(hr * 60);
+  return m % 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : String(m / 60);
+};
+
 const nowAttr = (fraction) => (fraction >= 0 && fraction <= 1 ? fraction.toFixed(4) : '-1');
 
 /**
@@ -42,10 +70,11 @@ const nowAttr = (fraction) => (fraction >= 0 && fraction <= 1 ? fraction.toFixed
  * @param cell     dither cell size in CSS px
  */
 export function dayRibbon(day, entries, { size = 'large', cell = 3 } = {}) {
-  const start = startOfDay(day);
-  const span = startOfDay(day.add({ days: 1 })) - start;
   const now = Date.now();
   const isToday = day.equals(today());
+  const win = windowFor(day, entries, now, isToday);
+  const start = win.start;
+  const span = win.end - win.start;
 
   const blocks = entries
     .filter((e) => (e.end ?? now) > start && e.start < start + span)
@@ -72,16 +101,18 @@ export function dayRibbon(day, entries, { size = 'large', cell = 3 } = {}) {
 
   loadDither();
   const sun = daylight(day);
-  return h('div', { class: `ribbon ${size}`, 'data-start': start, 'data-span': span },
+  const inWin = (frac) => (frac * 24 - win.from) / (win.to - win.from);
+  return h('div', { class: `ribbon ${size}`, 'data-start': start, 'data-span': span, 'data-today': isToday ? '' : null },
     h('div', { class: 'sky', role: 'img', 'aria-label': summary,
-      style: { '--sun-rise': pct(sun.rise), '--sun-noon': pct((sun.rise + sun.set) / 2), '--sun-set': pct(sun.set) } },
+      style: { '--sun-rise': pct(inWin(sun.rise)), '--sun-noon': pct(inWin((sun.rise + sun.set) / 2)), '--sun-set': pct(inWin(sun.set)) } },
       h('sky-dither', { now: isToday ? nowAttr((now - start) / span) : '-1', cell,
-        rise: sun.rise.toFixed(4), set: sun.set.toFixed(4) }),
+        rise: sun.rise.toFixed(4), set: sun.set.toFixed(4), from: String(win.from), to: String(win.to) }),
       blocks,
       isToday ? h('span', { class: 'now', style: { '--l': pct((now - start) / span) } }) : null,
     ),
     size === 'large'
-      ? h('div', { class: 'scale', 'aria-hidden': 'true' }, ['0', '6', '12', '18', '24'].map((t) => h('span', null, t)))
+      ? h('div', { class: 'scale', 'aria-hidden': 'true' },
+        [0, 1, 2, 3, 4].map((i) => h('span', null, hourLabel(win.from + ((win.to - win.from) * i) / 4))))
       : null,
   );
 }
@@ -91,6 +122,11 @@ export function updateRibbons(now = Date.now()) {
   for (const r of document.querySelectorAll('.ribbon')) {
     const start = Number(r.dataset.start);
     const span = Number(r.dataset.span);
+    // Today ran past the window's end (e.g. after 22:00): ask the view to redraw it wider.
+    if (r.hasAttribute('data-today') && now >= start + span && span < 24 * 3_600_000 - 1) {
+      document.dispatchEvent(new CustomEvent('ribbon-outgrown'));
+      return;
+    }
     for (const b of r.querySelectorAll('.blk.run')) {
       b.style.setProperty('--w', pct((Math.min(now, start + span) - Number(b.dataset.from)) / span));
     }
