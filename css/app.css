@@ -377,10 +377,10 @@
       border-radius: var(--radius-lg);
       /* Fallback sky; --sun-rise / --sun-noon / --sun-set come from js/ribbon.js daylight(). */
       background: linear-gradient(90deg,
-        var(--night) 0 calc(var(--sun-rise, 27.5%) - 7%), var(--dawn) var(--sun-rise, 27.5%),
-        var(--sky) calc(var(--sun-rise, 27.5%) + 8%), var(--noon) var(--sun-noon, 53%),
-        var(--sky) calc(var(--sun-set, 78.5%) - 8%), var(--dawn) var(--sun-set, 78.5%),
-        var(--night) calc(var(--sun-set, 78.5%) + 7%) 100%);
+        var(--night) 0 calc(var(--sun-rise, 27.5%) - 5%), var(--dawn) var(--sun-rise, 27.5%),
+        var(--sky) calc(var(--sun-rise, 27.5%) + 6%), var(--noon) var(--sun-noon, 53%),
+        var(--sky) calc(var(--sun-set, 78.5%) - 6%), var(--dawn) var(--sun-set, 78.5%),
+        var(--night) calc(var(--sun-set, 78.5%) + 5%) 100%);
     }
     &.small .sky { block-size: 1.25rem; border-radius: 0.375rem; }
 

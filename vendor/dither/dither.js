@@ -172,16 +172,25 @@ float field(vec2 uv, vec2 res, float t) {
   return max(tone, shade);
 }
 `,Tn=e=>`repeating-radial-gradient(ellipse 120% 90% at 35% 40%, transparent 0 22px, ${`color-mix(in oklab, ${te(e.at(-1)??e[1])} 30%, transparent)`} 22px 24px)`,En=({lines:e=14,scale:t=1,index:n=5,relief:r=.5,palette:i=Cn,stillTime:a=6,...o})=>/* @__PURE__ */ (0,x.jsx)(Sn,{...o,field:wn,palette:i,stillTime:a,uniforms:{contoursIndex:Math.max(0,Math.round(n)),contoursLines:Math.min(32,Math.max(4,e)),contoursRelief:Math.min(1,Math.max(0,r)),contoursScale:Math.max(.1,t)},fallback:/* @__PURE__ */ (0,x.jsx)(`div`,{className:`absolute inset-0`,style:{backgroundColor:te(i[0]),backgroundImage:Tn(i)}})}),Dn=`
-// The sky below is drawn for a reference day: sunrise 6:36, noon 12:43, sunset
-// 18:51. skyHour() maps the real clock hour onto it, so this date's sunrise,
-// solar noon and sunset (skyRise, skySet, from the app) land where they belong.
+// The sky below is drawn for a reference day (dawn 4:48–8:24, noon 12:43, dusk
+// 16:36–21:06). skyHour() maps the real clock hour onto it so this date's
+// light lands where it belongs: dawn from 1h12 before sunrise to 1h30 after,
+// solar noon midway, dusk from 1h30 before sunset to 1h12 after (skyRise and
+// skySet come from the app). Piecewise linear between those points.
+float seg(float h, float a, float b, float ra, float rb) {
+  return ra + (rb - ra) * clamp((h - a) / max(b - a, 0.01), 0.0, 1.0);
+}
 float skyHour(vec2 uv) {
   float h = uv.x * 24.0;
   float noon = 0.5 * (skyRise + skySet);
-  if (h < skyRise) return h * 6.6 / skyRise;
-  if (h < noon) return 6.6 + (h - skyRise) * (12.725 - 6.6) / (noon - skyRise);
-  if (h < skySet) return 12.725 + (h - noon) * (18.85 - 12.725) / (skySet - noon);
-  return 18.85 + (h - skySet) * (24.0 - 18.85) / (24.0 - skySet);
+  float d0 = max(skyRise - 1.2, 0.5), d1 = skyRise + 1.5;
+  float k0 = skySet - 1.5, k1 = min(skySet + 1.2, 23.5);
+  if (h < d0) return seg(h, 0.0, d0, 0.0, 4.8);
+  if (h < d1) return seg(h, d0, d1, 4.8, 8.4);
+  if (h < noon) return seg(h, d1, noon, 8.4, 12.725);
+  if (h < k0) return seg(h, noon, k0, 12.725, 16.6);
+  if (h < k1) return seg(h, k0, k1, 16.6, 21.1);
+  return seg(h, k1, 24.0, 21.1, 24.0);
 }
 
 // 0 at night, 1 at noon.
